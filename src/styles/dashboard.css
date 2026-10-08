@@ -1,0 +1,198 @@
+.dashboard-nav {
+    border-bottom: 1px solid var(--soft-line);
+    margin-bottom: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1rem;
+}
+
+.dashboard-nav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    text-decoration: none;
+    padding: .6rem .25rem;
+    border-bottom: 3px solid transparent;
+}
+
+.dashboard-nav a[aria-current=page] {
+    border-color: var(--accent);
+    font-weight: 650;
+}
+
+.account-note {
+    border: 1px solid var(--line);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.campaign-list,
+.user-list {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
+    border-top: 1px solid var(--soft-line);
+}
+
+.campaign-row,
+.user-row {
+    padding: 1.25rem 0;
+    border-bottom: 1px solid var(--soft-line);
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.campaign-row>div,
+.user-row>div {
+    min-width: 0;
+}
+
+.campaign-row h2,
+.user-row h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    overflow-wrap: anywhere;
+}
+
+.campaign-row p,
+.user-row p {
+    color: var(--muted);
+    margin: .4rem 0 0;
+    overflow-wrap: anywhere;
+}
+
+.row-status {
+    font-size: .875rem;
+    font-weight: 600;
+}
+
+.filter {
+    max-width: 260px;
+}
+
+.pagination {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    align-items: center;
+}
+
+.campaign-form {
+    display: grid;
+    gap: 2rem;
+}
+
+.form-preview {
+    min-width: 0;
+    max-width: 500px;
+}
+
+.form-preview h2 {
+    margin-bottom: .75rem;
+}
+
+.form-preview .editor {
+    font-size: .875rem;
+}
+
+.form-preview canvas {
+    max-height: none;
+}
+
+.template-input {
+    margin: 1rem 0;
+}
+
+.campaign-actions {
+    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--soft-line);
+}
+
+.metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 2.5rem;
+    margin: 1.5rem 0 2.5rem;
+}
+
+.metrics div {
+    min-width: 120px;
+}
+
+.metrics dt {
+    font-size: .875rem;
+    color: var(--muted);
+}
+
+.metrics dd {
+    margin: 0;
+    font-size: 1.8rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
+}
+
+.stats-layout {
+    display: grid;
+    gap: 2rem;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .9rem;
+}
+
+.data-table th,
+.data-table td {
+    text-align: left;
+    padding: .65rem .4rem;
+    border-bottom: 1px solid var(--soft-line);
+    overflow-wrap: anywhere;
+}
+
+.data-table th:last-child,
+.data-table td:last-child {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.settings-form {
+    max-width: 500px;
+    margin-bottom: 2.5rem;
+}
+
+.empty-state {
+    padding: 2rem 0;
+}
+
+.empty-state h2 {
+    margin-bottom: .5rem;
+}
+
+.moderation-reason {
+    margin: 1rem 0;
+    width: 100%;
+}
+
+@media (min-width:680px) {
+    .stats-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .campaign-row,
+    .user-row {
+        flex-wrap: nowrap;
+    }
+}
+
+@media (min-width:1000px) {
+    .campaign-form {
+        grid-template-columns: minmax(0, 1fr) minmax(0, .8fr);
+        gap: 3rem;
+    }
+}

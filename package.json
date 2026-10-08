@@ -1,0 +1,27 @@
+{
+  "name": "fadtwibbon",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.12" },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 3000",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 3000",
+    "lint": "eslint src tests scripts vite.config.js playwright.config.js",
+    "test": "node --test tests/unit/*.test.js",
+    "test:e2e": "playwright test",
+    "test:security": "node scripts/security-test.js",
+    "test:live": "node tests/integration/live.js",
+    "check:edge": "deno check --config supabase/functions/deno.json supabase/functions/*/index.ts",
+    "test:load": "node tests/load/local.js"
+  },
+  "dependencies": { "@supabase/supabase-js": "2.99.3" },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.58.2",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "vite": "^7.3.1"
+  }
+}
