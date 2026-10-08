@@ -64,7 +64,7 @@ try {
     const result=await service.auth.admin.getUserById(id);
     if (result.data?.user?.email?.startsWith('fadtwibbon-test-')) {
       const removed=await service.auth.admin.deleteUser(id);
-      if (removed.error) throw new Error(`Test account cleanup failed (${id}): ${removed.error.message}`);
+      if (removed.error) { console.error(`Test account cleanup failed (${id}): ${removed.error.message}`); process.exitCode = 1; }
     }
   }
 }
