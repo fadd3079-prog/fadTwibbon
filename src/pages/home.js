@@ -4,7 +4,15 @@ export function homePage(navigate) {
   const slug = field('Slug kampanye','campaign-slug',{ required:true,pattern:'[a-z0-9]+(-[a-z0-9]+)*',minlength:3,maxlength:64,placeholder:'slug-dari-tautan-kampanye' });
   const form = el('form',{ class:'open-campaign' },slug.wrap,el('button',{ type:'submit',class:'primary' },'Buka kampanye'));
   form.addEventListener('submit',(event) => { event.preventDefault(); navigate(`/c/${slug.input.value}`); });
-  return el('div',{ class:'home-page' },el('h1',{},'Buka kampanye Anda.'),el('p',{},'Gunakan tautan dari penyelenggara, atau masukkan slug kampanye di bawah ini.'),form,el('section',{ class:'organizer' },el('h2',{},'Mengelola kampanye?'),el('p',{},'Unggah bingkai PNG, tulis caption, lalu bagikan tautannya.'),el('div',{ class:'actions' },link('Masuk admin','/login','button'),link('Daftar admin','/register','button'))));
+  return el('div',{ class:'home-page' },
+    el('section',{ class:'hero' },
+      el('h1',{},'Tunjukkan dukunganmu.'),
+      el('p',{},'Pilih kampanye, pasang fotomu pada bingkai, dan bagikan ke semua orang.'),
+      el('div',{ class:'cta-row' },link('Jelajahi kampanye','#buka','button primary'))
+    ),
+    el('div',{ id:'buka',class:'card' },el('h2',{},'Buka kampanye'),el('p',{},'Gunakan tautan dari penyelenggara, atau masukkan slug kampanye di bawah ini.'),form),
+    el('section',{ class:'organizer card' },el('h2',{},'Mengelola kampanye?'),el('p',{},'Unggah bingkai PNG, tulis caption, lalu bagikan tautannya.'),el('div',{ class:'actions' },link('Masuk admin','/login','button'),link('Daftar admin','/register','button primary')))
+  );
 }
 
 export function legalPage(privacy) {

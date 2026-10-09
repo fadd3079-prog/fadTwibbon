@@ -24,8 +24,8 @@ async function route() {
   document.title='fadTwibbon';
   const main = el('main',{ id:'main',tabindex:'-1' });
   const publicEditor = path.startsWith('/c/');
-  const header = el('header',{ class:'site-header' },el('a',{ class:'brand',href:'/' },'fad',el('span',{},'Twibbon')));
-  if (!publicEditor) header.append(el('nav',{ 'aria-label':'Akun' },link('Masuk','/login')));
+  const header = el('header',{ class:'site-header' },el('div',{ class:'inner' },el('a',{ class:'brand',href:'/' },'fad',el('span',{},'Twibbon'))));
+  if (!publicEditor) header.querySelector('.inner').append(el('nav',{ 'aria-label':'Akun' },link('Masuk','/login')));
   const footer = el('footer',{ class:'site-footer' },link('Privasi','/privacy'),link('Ketentuan','/terms'));
   app.replaceChildren(header,main,footer);
   const loading=status(); message(loading,publicEditor?'Memuat kampanye…':'Memuat halaman…'); main.append(loading);
@@ -46,7 +46,7 @@ async function route() {
       const { context,signOut } = await import('./services/auth.js');
       const viewer=await context();
       if (!viewer) { navigate('/login',true); return; }
-      header.querySelector('nav').replaceChildren(button('Keluar',async () => { main.replaceChildren(el('p',{},'Keluar…')); try { await signOut(); navigate('/login',true); } catch { navigate('/login',true); } }));
+      header.querySelector('.inner nav').replaceChildren(button('Keluar',async () => { main.replaceChildren(el('p',{},'Keluar…')); try { await signOut(); navigate('/login',true); } catch { navigate('/login',true); } }));
       if (!viewer.verified || viewer.status==='suspended') page=el('div',{},el('h1',{},'Akun tidak dapat digunakan'),el('p',{},viewer.status==='suspended'?'Akun Anda ditangguhkan. Hubungi pengelola platform.':'Verifikasi email Anda sebelum mengakses dashboard.'));
       else if (path.startsWith('/superadmin') && viewer.role!=='super_admin') page=el('div',{},el('h1',{},'Akses ditolak'),link('Dashboard Anda','/admin'));
       else page=await (await import('./pages/dashboard.js')).dashboardPage(path,viewer,navigate);
