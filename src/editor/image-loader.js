@@ -121,10 +121,27 @@ export async function validateTemplate(file) {
   try {
     const ctx = canvas.getContext('2d', { willReadFrequently: true }); ctx.drawImage(image, 0, 0);
     const pixels = ctx.getImageData(0, 0, width, height).data;
-    let transparent = 0, visible = 0;
-    for (let i = 3; i < pixels.length; i += 4) { if (pixels[i] < 128) transparent++; if (pixels[i] > 0) visible++; }
-    if (transparent < width * height * 0.01 || !visible) throw new Error('Template perlu area transparan minimal 1% untuk foto dan bingkai yang terlihat.');
+    const { transparent, visible, total } = await countPixels(pixels, width, height);
+    if (transparent < total * 0.01 || !visible) throw new Error('Template perlu area transparan minimal 1% untuk foto dan bingkai yang terlihat.');
     return image;
   } catch (error) { release(image); throw error; }
   finally { canvas.width = canvas.height = 1; }
+}
+
+async function countPixels(pixels, width, height) {
+  if (typeof Worker === 'function') {
+    try {
+      const worker = new Worker(new URL('./template-worker.js', import.meta.url), { type: 'module' });
+      try {
+        return await new Promise((resolve, reject) => {
+          worker.onmessage = (event) => resolve(event.data);
+          worker.onerror = () => reject(new Error('worker'));
+          worker.postMessage({ pixels, width, height }, [pixels.buffer]);
+        });
+      } finally { worker.terminate(); }
+    } catch { /* fall through to main-thread counting */ }
+  }
+  let transparent = 0, visible = 0;
+  for (let i = 3; i < pixels.length; i += 4) { if (pixels[i] < 128) transparent++; if (pixels[i] > 0) visible++; }
+  return { transparent, visible, total: width * height };
 }
