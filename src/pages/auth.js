@@ -1,4 +1,4 @@
-import { el, link, field, status, busy, message } from '../utils/ui.js';
+import { el, link, button, field, status, busy, message } from '../utils/ui.js';
 import { supabase } from '../services/supabase.js';
 import { context, callbackUrl } from '../services/auth.js';
 
@@ -31,7 +31,10 @@ export async function authPage(mode, navigate) {
       else { form.reset(); message(feedback,mode==='register'?'Periksa email Anda untuk verifikasi. Jika sudah terdaftar, silakan masuk.':'Jika email terdaftar, tautan pemulihan akan dikirim. Periksa juga folder spam.'); }
     });
   });
-  if (mode==='login') root.append(el('nav',{ class:'auth-links','aria-label':'Bantuan masuk' },link('Lupa kata sandi?','/forgot-password'),link('Daftar admin','/register')));
+  if (mode==='login') {
+    root.append(el('nav',{ class:'auth-links','aria-label':'Bantuan masuk' },link('Lupa kata sandi?','/forgot-password'),link('Daftar admin','/register')));
+    const resend=button('Kirim ulang verifikasi',() => { if (!inputs.email.reportValidity()) return; void busy(resend,feedback,async () => { const { error }=await (await supabase()).auth.resend({ type:'signup',email:inputs.email.value.trim(),options:{ emailRedirectTo:callbackUrl() } }); if (error) throw error; },'Jika akun belum terverifikasi, email verifikasi akan dikirim.'); }); root.append(resend);
+  }
   else root.append(link('Kembali ke masuk','/login'));
   if (mode==='login' && new URLSearchParams(location.search).has('password')) message(feedback,'Kata sandi diperbarui. Silakan masuk kembali.');
   if (mode==='reset') {

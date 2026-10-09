@@ -15,6 +15,8 @@
     gap: .85rem;
 }
 
+.editor-tools { display: grid; gap: .85rem; min-width: 0; align-content: start; }
+
 .editor p {
     margin: 0;
 }
@@ -24,7 +26,8 @@
     background-color: #fff;
     background-image: conic-gradient(#e6e8e4 25%, transparent 0 50%, #e6e8e4 0 75%, transparent 0);
     background-size: 20px 20px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--canvas-line);
+    border-radius: 2px;
 }
 
 .editor canvas {
@@ -103,6 +106,8 @@
 
 @media (min-width:1050px) {
     .campaign-page {
-        max-width: 620px;
+        max-width: 1040px;
     }
+    .editor:not(.editor-preview) { grid-template-columns: minmax(0, 1fr) 300px; gap: 2.5rem; align-items: start; }
+    .editor:not(.editor-preview) .editor-tools { padding-top: .1rem; }
 }

@@ -17,17 +17,20 @@ function exifOrientation(bytes) {
       continue;
     }
     const size = view.getUint16(i);
-    if (size < 14 || i + size > bytes.length) break;
+    if (size < 22 || i + size > bytes.length) break;
     if (String.fromCharCode(bytes[i + 2], bytes[i + 3], bytes[i + 4], bytes[i + 5]) !== 'Exif') { i += size; continue; }
     const tiff = i + 8, little = bytes[tiff] === 0x49 && bytes[tiff + 1] === 0x49;
     if (!little && !(bytes[tiff] === 0x4d && bytes[tiff + 1] === 0x4d)) break;
     const ifd = tiff + view.getUint32(tiff + 4, little);
-    if (ifd + 2 > bytes.length) break;
+    if (ifd < tiff + 8 || ifd + 2 > i + size) break;
     const entries = view.getUint16(ifd, little);
     for (let e = 0; e < entries; e++) {
       const entry = ifd + 2 + e * 12;
-      if (entry + 12 > bytes.length) break;
-      if (view.getUint16(entry, little) === 0x0112) return view.getUint16(entry + 8, little);
+      if (entry + 12 > i + size) break;
+      if (view.getUint16(entry, little) === 0x0112 && view.getUint16(entry+2,little)===3 && view.getUint32(entry+4,little)===1) {
+        const orientation=view.getUint16(entry+8,little);
+        return orientation>=1 && orientation<=8 ? orientation : 1;
+      }
     }
     break;
   }
@@ -116,19 +119,20 @@ export async function validateTemplate(file) {
   const bytes = new Uint8Array(await file.arrayBuffer());
   const { width, height } = pngDimensions(bytes);
   validateDimensions(width, height, true);
+  if (bytes[24]!==8 || bytes[28]!==0) throw new Error('Template harus PNG 8-bit tanpa interlace. Ekspor ulang dari aplikasi desain.');
   const image = await decode(file);
   const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
   try {
     const ctx = canvas.getContext('2d', { willReadFrequently: true }); ctx.drawImage(image, 0, 0);
     const pixels = ctx.getImageData(0, 0, width, height).data;
-    const { transparent, visible, total } = await countPixels(pixels, width, height);
+    const { transparent, visible, total } = await countPixels(pixels, width, height, () => ctx.getImageData(0, 0, width, height).data);
     if (transparent < total * 0.01 || !visible) throw new Error('Template perlu area transparan minimal 1% untuk foto dan bingkai yang terlihat.');
     return image;
   } catch (error) { release(image); throw error; }
   finally { canvas.width = canvas.height = 1; }
 }
 
-async function countPixels(pixels, width, height) {
+async function countPixels(pixels, width, height, reread) {
   if (typeof Worker === 'function') {
     try {
       const worker = new Worker(new URL('./template-worker.js', import.meta.url), { type: 'module' });
@@ -141,6 +145,7 @@ async function countPixels(pixels, width, height) {
       } finally { worker.terminate(); }
     } catch { /* fall through to main-thread counting */ }
   }
+  if (!pixels.byteLength) pixels=reread();
   let transparent = 0, visible = 0;
   for (let i = 3; i < pixels.length; i += 4) { if (pixels[i] < 128) transparent++; if (pixels[i] > 0) visible++; }
   return { transparent, visible, total: width * height };

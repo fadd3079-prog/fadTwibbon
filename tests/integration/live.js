@@ -27,6 +27,8 @@ try {
   execFileSync('supabase',['db','query','--linked','--project-ref',ref,`update public.user_roles set role='super_admin' where user_id='${owner.user.id}'; update public.profiles set status='active' where user_id='${owner.user.id}';`],{ encoding:'utf8' });
   const viewer=must(await a.db.rpc('viewer_context')); check('editable metadata cannot provision superadmin',viewer.role==='admin' && viewer.status==='pending');
   must(await owner.db.rpc('moderate_account',{ p_user:a.user.id,p_status:'active' })); must(await owner.db.rpc('moderate_account',{ p_user:b.user.id,p_status:'active' }));
+  const roster=must(await owner.db.from('profiles').select('user_id,user_roles(role)').eq('user_id',a.user.id).single());
+  check('superadmin roster joins authoritative role',roster.user_roles.role==='admin');
   let campaign=must(await a.db.rpc('save_campaign',{ p_id:null,p_title:'Kampanye integrasi sementara',p_slug:`uji-${crypto.randomUUID()}`,p_description:'',p_caption:'Caption integrasi',p_expected:null }));
   check('authenticated campaign draft created',campaign.status==='draft');
   const cross=await b.db.from('campaigns').select('*').eq('id',campaign.id); check('tenant B cannot read tenant A',!cross.error && cross.data.length===0);
