@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.12" },
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 3000",
     "build": "vite build",
@@ -17,7 +19,11 @@
     "check:edge": "deno check --config supabase/functions/deno.json supabase/functions/*/index.ts",
     "test:load": "node tests/load/local.js"
   },
-  "dependencies": { "@supabase/supabase-js": "2.99.3" },
+  "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@supabase/supabase-js": "2.99.3",
+    "lucide": "^1.54.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.58.2",

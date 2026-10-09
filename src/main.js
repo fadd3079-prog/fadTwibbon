@@ -1,11 +1,13 @@
+import '@fontsource-variable/geist';
 import './styles/base.css';
 import './styles/editor.css';
 import { el,link,button,status,message,errorText } from './utils/ui.js';
 import { configured, supabase } from './services/supabase.js';
 import { themeControl } from './utils/theme.js';
+import { LogIn,LogOut } from 'lucide';
 
 const app = document.getElementById('app');
-let destroy = () => {}, request = null, sequence = 0, authSubscription;
+let destroy = () => {}, request = null, sequence = 0, authSubscription, dashboardSession=null;
 export function navigate(path, replace = false) {
   if (replace) history.replaceState({},'',path); else history.pushState({},'',path);
   void route();
@@ -19,16 +21,18 @@ document.addEventListener('click',(event) => {
 window.addEventListener('popstate',() => void route());
 
 async function route() {
-  const seq = ++sequence;
-  destroy(); destroy = () => {}; request?.abort(); request = new AbortController();
   const path = location.pathname.replace(/\/$/,'') || '/';
+  if (dashboardSession?.matches(path)) { document.title='fadTwibbon'; await dashboardSession.show(path); return; }
+  const seq = ++sequence;
+  destroy(); destroy = () => {}; dashboardSession=null; request?.abort(); request = new AbortController();
   document.title='fadTwibbon';
   const main = el('main',{ id:'main',tabindex:'-1' });
   const publicEditor = path.startsWith('/c/');
+  const authRoute=['/login','/register','/forgot-password','/reset-password','/auth/callback'].includes(path);
   const header = el('header',{ class:'site-header' },el('div',{ class:'inner' },el('a',{ class:'brand',href:'/' },'fad',el('span',{},'Twibbon'))));
-  if (!publicEditor) header.querySelector('.inner').append(el('nav',{ 'aria-label':'Akun' },link('Masuk','/login')));
+  if (!publicEditor && !authRoute) header.querySelector('.inner').append(el('nav',{ 'aria-label':'Akun' },link('Masuk','/login','',LogIn)));
   header.querySelector('.inner').append(themeControl());
-  const footer = el('footer',{ class:'site-footer' },link('Privasi','/privacy'),link('Ketentuan','/terms'));
+  const footer = el('footer',{ class:'site-footer' },el('span',{},'fadTwibbon'),el('nav',{ 'aria-label':'Informasi' },link('Privasi','/privacy'),link('Ketentuan','/terms')));
   app.replaceChildren(header,main,footer);
   const loading=status(); message(loading,publicEditor?'Memuat kampanye…':'Memuat halaman…'); main.append(loading);
   try {
@@ -48,18 +52,22 @@ async function route() {
       const { context,signOut } = await import('./services/auth.js');
       const viewer=await context();
       if (!viewer) { navigate('/login',true); return; }
-      header.querySelector('.inner nav').replaceChildren(button('Keluar',async () => { main.replaceChildren(el('p',{},'Keluar…')); try { await signOut(); navigate('/login',true); } catch { navigate('/login',true); } }));
+      header.querySelector('.inner nav').replaceChildren(button('Keluar',async () => { try { await signOut(); navigate('/login',true); } catch { navigate('/login',true); } },'header-action',LogOut));
       if (!viewer.verified || (viewer.status==='suspended' && !(viewer.deletion_pending && path==='/admin/settings'))) page=el('div',{},el('h1',{},'Akun tidak dapat digunakan'),el('p',{},viewer.deletion_pending?'Penghapusan akun belum selesai. Coba ulang untuk melanjutkan pembersihan.':viewer.status==='suspended'?'Akun Anda ditangguhkan. Hubungi pengelola platform.':'Verifikasi email Anda sebelum mengakses dashboard.'),viewer.deletion_pending?link('Lanjutkan penghapusan','/admin/settings','button'):null);
-      else if (path.startsWith('/superadmin') && viewer.role!=='super_admin') page=el('div',{},el('h1',{},'Akses ditolak'),link('Dashboard Anda','/admin'));
-      else page=await (await import('./pages/dashboard.js')).dashboardPage(path,viewer,navigate);
-    } else page=el('div',{},el('h1',{},'Halaman tidak ditemukan'),link('Ke beranda','/'));
+      else if (path.startsWith('/superadmin') && viewer.role!=='super_admin') page=el('div',{ class:'state-page' },el('h1',{},'Akses ditolak'),el('p',{},'Akun ini tidak memiliki izin untuk mengelola platform.'),link('Kembali ke kampanye','/admin','button'));
+      else {
+        dashboardSession=(await import('./pages/dashboard.js')).createDashboardLayout(viewer,navigate);
+        await dashboardSession.show(path); page=dashboardSession;
+      }
+    } else page=el('div',{ class:'state-page' },el('p',{ class:'kicker' },'404'),el('h1',{},'Halaman tidak ditemukan.'),el('p',{},'Periksa alamat yang Anda buka.'),link('Kembali ke beranda','/','button'));
     if (seq!==sequence) { page?.destroy?.(); return; }
-    main.replaceChildren(page.root || page); destroy=page.destroy || (() => {});
+    main.replaceChildren(page.root || page);
+    const cleanup=page.destroy || (() => {}); destroy=() => { cleanup(); if (dashboardSession===page) dashboardSession=null; };
     if (seq>1) { const heading=main.querySelector('h1'); if (heading) { heading.tabIndex=-1; heading.focus({ preventScroll:true }); } }
     window.scrollTo(0,0);
   } catch (error) {
     if (seq!==sequence || error.name==='AbortError') return;
-    main.replaceChildren(el('h1',{},error.message==='NOT_FOUND'?'Kampanye tidak tersedia':'Halaman gagal dimuat'),el('p',{ role:'alert' },errorText(error)),button('Coba lagi',() => void route()),link('Ke beranda','/','button'));
+    main.replaceChildren(el('div',{ class:'state-page' },el('p',{ class:'kicker' },error.message==='NOT_FOUND'?'Kampanye':'Gangguan layanan'),el('h1',{},error.message==='NOT_FOUND'?'Kampanye tidak ditemukan.':'Gagal memuat halaman.'),el('p',{ role:'alert' },errorText(error)),el('div',{ class:'actions' },button('Coba lagi',() => void route()),link('Kembali ke beranda','/','button'))));
   }
 }
 

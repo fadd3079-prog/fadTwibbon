@@ -10,8 +10,10 @@ export function el(tag, attrs = {}, ...children) {
   return node;
 }
 
-export const link = (text, href, className = '') => el('a', { href, class: className }, text);
-export const button = (text, handler, className = '') => el('button', { type: 'button', class: className, onclick: handler }, text);
+import { icon } from '../components/icon.js';
+
+export const link = (text, href, className = '', iconDefinition = null) => el('a', { href, class: className },iconDefinition?icon(iconDefinition):null,el('span',{},text));
+export const button = (text, handler, className = '', iconDefinition = null) => el('button', { type: 'button', class: className, onclick: handler },iconDefinition?icon(iconDefinition):null,el('span',{},text));
 export const status = () => el('p', { class: 'notice', role: 'status', 'aria-live': 'polite' });
 export function message(node, text, error = false) {
   node.textContent = text;

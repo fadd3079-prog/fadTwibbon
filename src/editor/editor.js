@@ -2,6 +2,7 @@ import { el, button, status, message, copy } from '../utils/ui.js';
 import { loadPhoto, release } from './image-loader.js';
 import { initialTransform, constrain, coverScale, transformAt, pointerToFrame } from './geometry.js';
 import { render, exportPng } from './renderer.js';
+import { Copy,Download,RefreshCcw,RotateCcw,RotateCw,Upload,ZoomIn,ZoomOut } from 'lucide';
 
 export function createEditor(template, { slug = 'preview', caption = '', onDownload, preview = false } = {}) {
   const frame = { width: template.width, height: template.height };
@@ -9,7 +10,7 @@ export function createEditor(template, { slug = 'preview', caption = '', onDownl
   canvas.style.aspectRatio = `${frame.width} / ${frame.height}`;
   const feedback = status();
   const input = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', hidden: true, id: 'photo-file', tabindex: '-1' });
-  const select = button('Pilih Foto', () => input.click(), 'choose');
+  const select = button('Pilih Foto', () => input.click(), 'choose primary',Upload);
   const download = button('Unduh Twibbon', async () => {
     download.disabled = true; message(feedback, 'Membuat PNG…');
     try {
@@ -24,25 +25,24 @@ export function createEditor(template, { slug = 'preview', caption = '', onDownl
       if (onDownload) Promise.resolve().then(onDownload).catch(() => { });
     } catch (error) { message(feedback, error.message || 'Ekspor gagal. Coba foto lain.', true); }
     finally { download.disabled = !photo; }
-  }, 'primary');
+  }, 'primary',Download);
   const save = el('a', { hidden: true, target: '_blank', rel: 'noopener', class: 'save-result' }, 'Buka hasil PNG');
   let photo = null, state = null, raf = 0, disposed = false, photoSequence = 0, downloadUrl = null;
   const pointers = new Map(); let gesture;
-  const controls = el('fieldset', { disabled: true, class: 'editor-controls' }, el('legend', { class: 'visually-hidden' }, 'Atur foto'));
+  const controls = el('fieldset', { disabled: true, class: 'editor-controls' }, el('legend', { class: 'control-label' }, 'Sesuaikan foto'));
   const center = { x: frame.width / 2, y: frame.height / 2 };
   const change = (next) => { if (!photo) return; state = constrain(next, frame, photo); requestRender(); };
   const zoom = (factor) => { if (state) change(transformAt(state, center, center, state.scale * factor, state.rotation)); };
   const rotate = (angle) => { if (state) change({ ...state, rotation: state.rotation + angle }); };
-  controls.append(button('−', () => zoom(1 / 1.12)), button('+', () => zoom(1.12)), button('Putar kiri', () => rotate(-Math.PI / 12)), button('Putar kanan', () => rotate(Math.PI / 12)), button('Atur ulang', () => { if (photo) change(initialTransform(frame, photo)); }));
-  controls.children[0].setAttribute('aria-label', 'Perkecil foto'); controls.children[1].setAttribute('aria-label', 'Perbesar foto');
+  controls.append(button('Perkecil', () => zoom(1 / 1.12),'tool-button',ZoomOut), button('Perbesar', () => zoom(1.12),'tool-button',ZoomIn), button('Putar Kiri', () => rotate(-Math.PI / 12),'tool-button',RotateCcw), button('Putar Kanan', () => rotate(Math.PI / 12),'tool-button',RotateCw), button('Atur Ulang', () => { if (photo) change(initialTransform(frame, photo)); },'tool-button reset-tool',RefreshCcw));
   const slider = el('input', { type: 'range', min: '100', max: '500', value: '100', step: '1', 'aria-label': 'Perbesaran foto' });
   slider.addEventListener('input', () => { if (state) change(transformAt(state, center, center, coverScale(frame, photo, state.rotation) * Number(slider.value) / 100, state.rotation)); });
   controls.append(el('label', { class: 'zoom-label' }, 'Zoom', slider));
-  const help = el('p', { id: 'editor-help', class: 'hint' }, 'Geser foto atau cubit untuk zoom. Template tetap di tempatnya.');
+  const help = el('p', { id: 'editor-help', class: 'editor-help' }, 'Geser atau cubit foto.');
   const tools=el('div',{ class:'editor-tools' },input,select,controls,help);
   const root = el('section', { class: preview ? 'editor editor-preview' : 'editor', 'aria-label': preview ? 'Pratinjau template' : 'Buat Twibbon' }, el('div', { class: 'canvas-wrap' }, canvas), tools);
-  if (!preview) tools.append(download, save, button('Salin Caption', () => copy(caption, feedback), 'caption-button'));
-  tools.append(feedback, el('p', { class: 'privacy-note' }, 'Foto Anda diproses di perangkat ini, tidak diunggah.'));
+  if (!preview) tools.append(el('div',{ class:'editor-actions' },download,save,button('Salin Caption', () => copy(caption, feedback), 'caption-button',Copy)));
+  tools.append(feedback, el('p', { class: 'privacy-note' }, 'Foto tetap di perangkat Anda.'));
 
   function requestRender() {
     if (disposed || raf) return;
@@ -64,7 +64,7 @@ export function createEditor(template, { slug = 'preview', caption = '', onDownl
       const next = await loadPhoto(file, frame);
       if (disposed || seq !== photoSequence) { release(next); return; }
       release(photo); photo = next; state = initialTransform(frame, photo);
-      controls.disabled = false; download.disabled = false; select.textContent = 'Ganti Foto';
+      controls.disabled = false; download.disabled = false; select.querySelector('span').textContent = 'Ganti Foto'; select.classList.remove('primary');
       if (downloadUrl) { URL.revokeObjectURL(downloadUrl); downloadUrl = null; save.hidden = true; }
       message(feedback, 'Foto siap. Sesuaikan posisi sebelum mengunduh.'); requestRender();
     } catch (error) { message(feedback, error.message, true); }

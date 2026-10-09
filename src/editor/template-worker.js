@@ -1,5 +1,3 @@
-// Web Worker: count transparent/visible pixels off the main thread.
-// Receives { pixels: Uint8ClampedArray, width, height }, transfers buffer for zero-copy.
 self.onmessage = (event) => {
   const { pixels, width, height } = event.data;
   let transparent = 0, visible = 0;

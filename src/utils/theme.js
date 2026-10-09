@@ -1,19 +1,36 @@
+import { Moon,Sun } from 'lucide';
+import { icon } from '../components/icon.js';
 import { el } from './ui.js';
 
 const key='fadtwibbon-theme';
 const system=matchMedia('(prefers-color-scheme: dark)');
-let preference='system';
-try { const saved=localStorage.getItem(key); if (['light','dark','system'].includes(saved)) preference=saved; } catch { /* Theme still works when browser storage is unavailable. */ }
+let preference=null;
+try { const saved=localStorage.getItem(key); if (saved==='light' || saved==='dark') preference=saved; } catch { /* Storage is optional. */ }
+const current=() => preference || (system.matches?'dark':'light');
+const controls=new Set();
+
 function apply() {
-  const theme=preference==='system'?(system.matches?'dark':'light'):preference;
+  const theme=current();
   document.documentElement.dataset.theme=theme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='dark'?'#121212':'#f5f4ef');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='dark'?'#0a0a0a':'#ffffff');
+  for (const control of controls) {
+    const dark=theme==='dark';
+    control.replaceChildren(icon(dark?Sun:Moon));
+    control.setAttribute('aria-label',dark?'Gunakan Tema Terang':'Gunakan Tema Gelap');
+    control.title=dark?'Tema Terang':'Tema Gelap';
+  }
 }
-apply(); system.addEventListener('change',() => { if (preference==='system') apply(); });
+
+apply();
+system.addEventListener('change',() => { if (!preference) apply(); });
 
 export function themeControl() {
-  const select=el('select',{ 'aria-label':'Tema tampilan',class:'theme-select' },el('option',{ value:'system' },'Tema sistem'),el('option',{ value:'light' },'Terang'),el('option',{ value:'dark' },'Gelap'));
-  select.value=preference;
-  select.addEventListener('change',() => { preference=select.value; try { localStorage.setItem(key,preference); } catch { /* No persistence in restricted browser contexts. */ } apply(); });
-  return select;
+  const control=el('button',{ type:'button',class:'icon-button theme-toggle' });
+  controls.add(control); apply();
+  control.addEventListener('click',() => {
+    preference=current()==='dark'?'light':'dark';
+    try { localStorage.setItem(key,preference); } catch { /* Theme still changes for this page. */ }
+    apply();
+  });
+  return control;
 }

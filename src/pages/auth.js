@@ -1,22 +1,29 @@
 import { el, link, button, field, status, busy, message } from '../utils/ui.js';
 import { supabase } from '../services/supabase.js';
 import { context, callbackUrl } from '../services/auth.js';
+import { Eye,EyeOff } from 'lucide';
+import { icon } from '../components/icon.js';
 
 export async function authPage(mode, navigate) {
-  const titles = { login:'Masuk', register:'Daftar sebagai admin', forgot:'Lupa kata sandi', reset:'Atur kata sandi baru' };
+  const titles = { login:'Masuk', register:'Daftar', forgot:'Pulihkan kata sandi', reset:'Buat kata sandi baru' };
+  const descriptions={ login:'Kelola kampanye Anda.',register:'Buat akun baru.',forgot:'Masukkan email akun Anda.',reset:'Minimal 12 karakter.' };
   const feedback = status();
   const form = el('form', { class:'auth-form' });
-  const root = el('div', { class:'auth-page' }, el('h1', {}, titles[mode]), form, feedback);
+  const root = el('div', { class:'auth-page' }, el('div',{ class:'auth-heading' },el('p',{ class:'kicker' },'fadTwibbon'),el('h1', {}, titles[mode]),el('p',{},descriptions[mode])), form, feedback);
   const inputs = {};
-  const add = (label,name,attrs) => { const f = field(label,name,attrs); inputs[name]=f.input; form.append(f.wrap); };
+  const add = (label,name,attrs) => { const f = field(label,name,attrs); inputs[name]=f.input; form.append(f.wrap); return f; };
   if (mode==='register') add('Nama pengelola','display_name',{ required:true,maxlength:100,autocomplete:'name' });
   if (mode!=='reset') add('Email','email',{ type:'email',required:true,autocomplete:'email',inputmode:'email' });
-  if (mode==='login' || mode==='register' || mode==='reset') add('Kata sandi','password',{ type:'password',required:true,minlength:mode==='login'?1:12,maxlength:128,autocomplete:mode==='login'?'current-password':'new-password',help:mode==='login'?null:'Gunakan minimal 12 karakter.' });
+  if (mode==='login' || mode==='register' || mode==='reset') {
+    const password=add('Kata sandi','password',{ type:'password',required:true,minlength:mode==='login'?1:12,maxlength:128,autocomplete:mode==='login'?'current-password':'new-password',help:mode==='login'?null:'Minimal 12 karakter.' });
+    const toggle=button('Tampilkan',() => { const visible=password.input.type==='text'; password.input.type=visible?'password':'text'; toggle.querySelector('svg').replaceWith(icon(visible?Eye:EyeOff)); toggle.querySelector('span').textContent=visible?'Tampilkan':'Sembunyikan'; toggle.setAttribute('aria-pressed',String(!visible)); },'password-toggle',Eye);
+    toggle.setAttribute('aria-pressed','false'); password.wrap.append(toggle); password.wrap.classList.add('password-field');
+  }
   if (mode==='register') {
-    form.append(el('p', { class:'hint' }, 'Verifikasi email untuk membuat draft. Publikasi memerlukan persetujuan pengelola platform.'));
+    form.append(el('p', { class:'form-note' }, 'Verifikasi email sebelum masuk.'));
     form.append(el('label',{ class:'check' },el('input',{ type:'checkbox',required:true }),el('span',{},'Saya menyetujui ',link('Ketentuan','/terms'),' dan ',link('Privasi','/privacy'),'.')));
   }
-  const submit = el('button',{ type:'submit',class:'primary' },mode==='forgot'?'Kirim tautan pemulihan':mode==='reset'?'Simpan kata sandi':titles[mode]); form.append(submit);
+  const submit = el('button',{ type:'submit',class:'primary' },mode==='forgot'?'Kirim tautan':mode==='reset'?'Simpan kata sandi':titles[mode]); form.append(submit);
   form.addEventListener('submit',(event) => {
     event.preventDefault();
     busy(submit,feedback,async () => {
@@ -32,10 +39,10 @@ export async function authPage(mode, navigate) {
     });
   });
   if (mode==='login') {
-    root.append(el('nav',{ class:'auth-links','aria-label':'Bantuan masuk' },link('Lupa kata sandi?','/forgot-password'),link('Daftar admin','/register')));
-    const resend=button('Kirim ulang verifikasi',() => { if (!inputs.email.reportValidity()) return; void busy(resend,feedback,async () => { const { error }=await (await supabase()).auth.resend({ type:'signup',email:inputs.email.value.trim(),options:{ emailRedirectTo:callbackUrl() } }); if (error) throw error; },'Jika akun belum terverifikasi, email verifikasi akan dikirim.'); }); root.append(resend);
+    root.append(el('nav',{ class:'auth-links','aria-label':'Bantuan masuk' },link('Lupa kata sandi?','/forgot-password'),link('Daftar','/register')));
+    const resend=button('Kirim Ulang Verifikasi',() => { if (!inputs.email.reportValidity()) return; void busy(resend,feedback,async () => { const { error }=await (await supabase()).auth.resend({ type:'signup',email:inputs.email.value.trim(),options:{ emailRedirectTo:callbackUrl() } }); if (error) throw error; },'Email verifikasi sudah dikirim.'); }); root.append(resend);
   }
-  else root.append(link('Kembali ke masuk','/login'));
+  else root.append(link('Kembali ke Masuk','/login','auth-back'));
   if (mode==='login' && new URLSearchParams(location.search).has('password')) message(feedback,'Kata sandi diperbarui. Silakan masuk kembali.');
   if (mode==='reset') {
     const { data:{ session } } = await (await supabase()).auth.getSession();
@@ -47,11 +54,11 @@ export async function authPage(mode, navigate) {
 export async function callbackPage(navigate) {
   const db = await supabase();
   const query = new URLSearchParams(location.search);
-  if (query.get('error') || new URLSearchParams(location.hash.slice(1)).get('error')) return el('div',{},el('h1',{},'Tautan tidak berlaku'),el('p',{},'Tautan verifikasi kedaluwarsa atau sudah digunakan.'),link('Kembali ke masuk','/login'));
+  if (query.get('error') || new URLSearchParams(location.hash.slice(1)).get('error')) return el('div',{ class:'state-page' },el('h1',{},'Tautan tidak berlaku'),el('p',{},'Tautan verifikasi kedaluwarsa atau sudah digunakan.'),link('Kembali ke Masuk','/login','button'));
   const { data:{ session },error } = await db.auth.getSession();
-  if (error || !session) return el('div',{},el('h1',{},'Verifikasi belum selesai'),el('p',{},'Buka tautan dari email di browser yang sama saat mendaftar.'),link('Masuk','/login'));
+  if (error || !session) return el('div',{ class:'state-page' },el('h1',{},'Verifikasi belum selesai'),el('p',{},'Buka tautan dari email di browser yang sama saat mendaftar.'),link('Masuk','/login','button'));
   history.replaceState({},'',location.pathname);
   const viewer = await context();
   navigate(viewer?.role==='super_admin'?'/superadmin':'/admin',true);
-  return el('p',{},'Membuka dashboard…');
+  return el('p',{},'Membuka halaman pengelolaan…');
 }
