@@ -1,19 +1,58 @@
 import { LIMITS, imageKind, pngDimensions, validateDimensions } from '../utils/validation.js';
 
-function sourceDimensions(bytes, kind) {
+function exifOrientation(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let i = 2;
+  while (i + 9 < bytes.length) {
+    if (bytes[i++] !== 255) continue;
+    while (i < bytes.length && bytes[i] === 255) i++;
+    if (i + 1 >= bytes.length) break;
+    const marker = bytes[i++];
+    if (marker !== 0xe1) {
+      if (marker === 0xda || marker === 0xd9) break;
+      if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+      const size = view.getUint16(i);
+      if (size < 2 || i + size > bytes.length) break;
+      i += size;
+      continue;
+    }
+    const size = view.getUint16(i);
+    if (size < 14 || i + size > bytes.length) break;
+    if (String.fromCharCode(bytes[i + 2], bytes[i + 3], bytes[i + 4], bytes[i + 5]) !== 'Exif') { i += size; continue; }
+    const tiff = i + 8, little = bytes[tiff] === 0x49 && bytes[tiff + 1] === 0x49;
+    if (!little && !(bytes[tiff] === 0x4d && bytes[tiff + 1] === 0x4d)) break;
+    const ifd = tiff + view.getUint32(tiff + 4, little);
+    if (ifd + 2 > bytes.length) break;
+    const entries = view.getUint16(ifd, little);
+    for (let e = 0; e < entries; e++) {
+      const entry = ifd + 2 + e * 12;
+      if (entry + 12 > bytes.length) break;
+      if (view.getUint16(entry, little) === 0x0112) return view.getUint16(entry + 8, little);
+    }
+    break;
+  }
+  return 1;
+}
+
+export function sourceDimensions(bytes, kind) {
   if (kind === 'png') return pngDimensions(bytes);
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (kind === 'jpeg') {
     let i = 2;
     while (i + 9 < bytes.length) {
       if (bytes[i++] !== 255) continue;
-      while (bytes[i] === 255) i++;
+      while (i < bytes.length && bytes[i] === 255) i++;
+      if (i + 1 >= bytes.length) break;
       const marker = bytes[i++];
       if (marker === 0xda || marker === 0xd9) break;
       if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue;
       const size = view.getUint16(i);
       if (size < 2 || i + size > bytes.length) break;
-      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) return { width: view.getUint16(i + 5), height: view.getUint16(i + 3) };
+      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) {
+        const width = view.getUint16(i + 5), height = view.getUint16(i + 3);
+        const orientation = exifOrientation(bytes);
+        return orientation >= 5 && orientation <= 8 ? { width: height, height: width } : { width, height };
+      }
       i += size;
     }
   }
@@ -58,7 +97,10 @@ export async function loadPhoto(file, frame) {
     const image = await decode(file, { width: Math.max(1, Math.round(dimensions.width * ratio)), height: Math.max(1, Math.round(dimensions.height * ratio)) });
     validateDimensions(image.width, image.height);
     return image;
-  } catch { throw new Error('Foto tidak dapat dibaca. Coba berkas JPEG atau PNG lain.'); }
+  } catch (error) {
+    if (error?.friendly) throw error;
+    throw new Error('Foto tidak dapat dibaca. Coba berkas JPEG atau PNG lain.');
+  }
 }
 
 export async function loadTemplate(url, signal) {

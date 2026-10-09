@@ -25,5 +25,5 @@ export function pngDimensions(bytes) {
 
 export function validateDimensions(width, height, template = false) {
   const max = template ? LIMITS.templatePixels : LIMITS.photoPixels;
-  if (!width || !height || width * height > max || (template && (width > LIMITS.side || height > LIMITS.side))) throw new Error(template ? 'Template maksimal 4.096 piksel per sisi dan 16 megapiksel.' : 'Foto maksimal 40 megapiksel. Pilih foto dengan resolusi lebih kecil.');
+  if (!width || !height || width * height > max || (template && (width > LIMITS.side || height > LIMITS.side))) throw Object.assign(new Error(template ? 'Template maksimal 4.096 piksel per sisi dan 16 megapiksel.' : 'Foto maksimal 40 megapiksel. Pilih foto dengan resolusi lebih kecil.'), { friendly: true });
 }

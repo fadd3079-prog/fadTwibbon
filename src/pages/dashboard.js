@@ -46,14 +46,16 @@ async function campaigns(global,base) {
         list.append(el('li',{ class:'campaign-row' },el('div',{},el('h2',{},c.title),el('p',{},el('span',{ class:'row-status' },states[c.status]),` · /c/${c.slug}`),el('small',{},`Diperbarui ${date(c.updated_at)}`)),actions));
       }
       if (count>12) {
-        const prev=button('Sebelumnya',() => { page--; void load(); }),next=button('Berikutnya',() => { page++; void load(); }); prev.disabled=page===0; next.disabled=(page+1)*12>=count;
+        const prev=button('Sebelumnya',() => { page=Math.max(0,page-1); void load(); }),next=button('Berikutnya',() => { page++; void load(); }); prev.disabled=page===0; next.disabled=(page+1)*12>=count;
         pager.append(prev,el('span',{},`Halaman ${page+1} dari ${Math.ceil(count/12)}`),next);
       }
     } catch (error) { if (!disposed) { message(feedback,error.message?.includes('FORBIDDEN')?'Akses tidak tersedia.':'Daftar gagal dimuat. Coba lagi.',true); pager.append(button('Coba lagi',() => void load())); } }
   }
   select.addEventListener('change',() => { page=0; void load(); }); await load();
-  const summary=await rpc('dashboard_stats',{ p_global:global });
-  root.insertBefore(el('p',{ class:'hint' },`${number(summary.published)} kampanye terbit. ${number(summary.downloads)} aktivitas unduh tercatat.${global?` ${number(summary.users)} akun pengelola.`:''}`),filter.wrap);
+  try {
+    const summary=await rpc('dashboard_stats',{ p_global:global });
+    root.insertBefore(el('p',{ class:'hint' },`${number(summary.published)} kampanye terbit. ${number(summary.downloads)} aktivitas unduh tercatat.${global?` ${number(summary.users)} akun pengelola.`:''}`),filter.wrap);
+  } catch { root.insertBefore(el('p',{ class:'hint' },'Ringkasan statistik gagal dimuat.'),filter.wrap); }
   return { root,destroy() { disposed=true; } };
 }
 
@@ -125,17 +127,20 @@ async function campaignForm(id,viewer,base,navigate) {
 
 async function statistics(global) {
   const data=await rpc('dashboard_stats',{ p_global:global });
+  if (!data || typeof data!=='object') throw Object.assign(new Error('Statistik gagal dimuat. Coba lagi.'),{ friendly:true });
   const root=el('section',{},el('h1',{},global?'Statistik platform':'Statistik kampanye'),el('p',{ class:'hint' },'Aktivitas unduh yang diterima server, bukan jumlah orang unik atau jaminan berkas tersimpan. Tanggal menggunakan UTC.'));
   const metrics=el('dl',{ class:'metrics' });
   for (const [label,value] of [['Total tercatat',data.downloads],['7 hari terakhir',data.last7],['30 hari terakhir',data.last30]]) metrics.append(el('div',{},el('dt',{},label),el('dd',{},number(value))));
   root.append(metrics);
   if (!data.campaigns) { root.append(el('p',{ class:'empty-state' },'Belum ada kampanye. Buat kampanye terlebih dahulu untuk melihat aktivitasnya.')); return root; }
   const ranking=el('section',{},el('h2',{},'Kampanye dengan aktivitas terbanyak'));
-  const table=el('table',{ class:'data-table' },el('thead',{},el('tr',{},el('th',{ scope:'col' },'Kampanye'),el('th',{ scope:'col' },'Aktivitas unduh'))),el('tbody',{},data.ranking.map((r) => el('tr',{},el('td',{},link(r.title,`${global?'/superadmin':'/admin'}/campaigns/${r.id}`)),el('td',{},number(r.downloads)))))); ranking.append(table);
+  const rows=Array.isArray(data.ranking)?data.ranking:[];
+  const table=el('table',{ class:'data-table' },el('thead',{},el('tr',{},el('th',{ scope:'col' },'Kampanye'),el('th',{ scope:'col' },'Aktivitas unduh'))),el('tbody',{},rows.map((r) => el('tr',{},el('td',{},link(r.title,`${global?'/superadmin':'/admin'}/campaigns/${r.id}`)),el('td',{},number(r.downloads)))))); ranking.append(table);
   const daily=el('section',{},el('h2',{},'Aktivitas unduh per hari'));
   const range=el('select',{ 'aria-label':'Rentang hari' },el('option',{ value:'7' },'7 hari terakhir'),el('option',{ value:'30' },'30 hari terakhir'));
   const dailyTable=el('table',{ class:'data-table' }),head=el('thead',{},el('tr',{},el('th',{ scope:'col' },'Tanggal (UTC)'),el('th',{ scope:'col' },'Aktivitas unduh'))),body=el('tbody',{});
-  function draw() { body.replaceChildren(...data.series.slice(-Number(range.value)).map((r) => el('tr',{},el('td',{},date(r.day)),el('td',{},number(r.downloads))))); }
+  const series=Array.isArray(data.series)?data.series:[];
+  function draw() { body.replaceChildren(...series.slice(-Number(range.value)).map((r) => el('tr',{},el('td',{},date(r.day)),el('td',{},number(r.downloads))))); }
   range.addEventListener('change',draw); draw(); dailyTable.append(head,body); daily.append(range,dailyTable);
   root.append(el('div',{ class:'stats-layout' },ranking,daily)); return root;
 }
@@ -163,7 +168,7 @@ async function users() {
       } else info.append(el('p',{ class:'hint' },'Pemilik platform'));
       list.append(row);
     }
-    if (count>12) { const prev=button('Sebelumnya',() => { page--; void load(); }),next=button('Berikutnya',() => { page++; void load(); }); prev.disabled=page===0; next.disabled=(page+1)*12>=count; pager.append(prev,el('span',{},`Halaman ${page+1}`),next); }
+    if (count>12) { const prev=button('Sebelumnya',() => { page=Math.max(0,page-1); void load(); }),next=button('Berikutnya',() => { page++; void load(); }); prev.disabled=page===0; next.disabled=(page+1)*12>=count; pager.append(prev,el('span',{},`Halaman ${page+1}`),next); }
   }
   filter.addEventListener('change',() => { page=0; void load(); }); await load();
   return { root,destroy() { disposed=true; } };
