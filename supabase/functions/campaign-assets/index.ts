@@ -5,6 +5,7 @@ Deno.serve(async (req) => {
   const early = preflight(req); if (early) return early;
   if (req.method !== 'POST') return reply(req,{ error:'METHOD_NOT_ALLOWED' },405);
   let uploaded: string | null = null;
+  let uploadedSize=0;
   const admin = service();
   try {
     const { db,user,profile } = await identity(req);
@@ -38,6 +39,7 @@ Deno.serve(async (req) => {
       const upload = await admin.storage.from('templates').upload(path,data,{ contentType:'image/png',cacheControl:'31536000',upsert:false });
       if (upload.error) throw upload.error;
       uploaded = path;
+      uploadedSize=data.length;
       const result = await admin.rpc('commit_template',{ p_actor:user.id,p_campaign:c.id,p_expected:expected,p_id:id,p_path:path,p_size:data.length,p_width:dimensions.width,p_height:dimensions.height,p_hash:hash });
       if (result.error) throw result.error;
       uploaded = null;
@@ -58,7 +60,10 @@ Deno.serve(async (req) => {
     if (result.error) throw result.error;
     return reply(req,result.data);
   } catch (error) {
-    if (uploaded) await admin.storage.from('templates').remove([uploaded]);
+    if (uploaded) {
+      const removed=await admin.storage.from('templates').remove([uploaded]);
+      if (removed.error) await admin.rpc('queue_unregistered_template',{ p_owner:uploaded.split('/')[0],p_path:uploaded,p_size:uploadedSize });
+    }
     return failure(req,error);
   }
 });

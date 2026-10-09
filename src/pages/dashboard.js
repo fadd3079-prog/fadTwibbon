@@ -43,7 +43,7 @@ async function campaigns(global,base) {
       for (const c of data) {
         const actions=el('div',{ class:'actions' },link(global?'Kelola':'Edit',`${base}/campaigns/${c.id}`,'button'));
         if (c.status==='published') actions.append(button('Salin tautan',() => copy(`${location.origin}/c/${c.slug}`,feedback)),el('a',{ href:`/c/${c.slug}`,target:'_blank',rel:'noopener',class:'button' },'Buka'));
-        list.append(el('li',{ class:'campaign-row' },el('div',{},el('h2',{},c.title),el('p',{},el('span',{ class:'row-status' },states[c.status]),` · /c/${c.slug}`),el('small',{},`Diperbarui ${date(c.updated_at)}`)),actions));
+        list.append(el('li',{ class:'campaign-row' },el('div',{},el('h2',{},c.title),el('p',{},el('span',{ class:'row-status','data-status':c.status },states[c.status]),` · /c/${c.slug}`),el('small',{},`Diperbarui ${date(c.updated_at)}`)),actions));
       }
       if (count>12) {
         const prev=button('Sebelumnya',() => { page=Math.max(0,page-1); void load(); }),next=button('Berikutnya',() => { page++; void load(); }); prev.disabled=page===0; next.disabled=(page+1)*12>=count;
@@ -152,7 +152,7 @@ async function users() {
   let page=0,disposed=false;
   async function load() {
     message(feedback,'Memuat akun…'); list.replaceChildren(); pager.replaceChildren();
-    let query=(await supabase()).from('profiles').select('user_id,display_name,status,created_at,user_roles(role)',{ count:'exact' }).order('created_at',{ ascending:false }).range(page*12,page*12+11);
+    let query=(await supabase()).from('profiles').select('user_id,display_name,status,deletion_pending,created_at,user_roles(role)',{ count:'exact' }).order('created_at',{ ascending:false }).range(page*12,page*12+11);
     if (filter.value) query=query.eq('status',filter.value);
     const { data,error,count }=await query;
     if (disposed) return;
@@ -162,7 +162,8 @@ async function users() {
     for (const user of data) {
       const info=el('div',{},el('h2',{},user.display_name || 'Pengelola tanpa nama'),el('p',{},({ pending:'Menunggu persetujuan',active:'Aktif',suspended:'Ditangguhkan' })[user.status]),el('small',{},`ID: ${user.user_id}`));
       const row=el('li',{ class:'user-row' },info);
-      if (user.user_roles?.role!=='super_admin') {
+      if (user.deletion_pending) info.append(el('p',{ class:'hint' },'Penghapusan akun belum selesai. Pemilik akun dapat mencoba ulang melalui Pengaturan.'));
+      else if (user.user_roles?.role!=='super_admin') {
         const active=user.status==='active';
         row.append(button(active?'Tangguhkan':user.status==='pending'?'Setujui':'Aktifkan',() => confirmAction(active?'Tangguhkan akun?':'Aktifkan akun?',active?'Kampanye akun ini akan disembunyikan. Data tidak dihapus.':'Akun ini dapat memublikasikan kampanye. Kampanye terbit yang sebelumnya tersembunyi karena penangguhan akan tersedia lagi.',active?'Tangguhkan':'Aktifkan',async () => { await rpc('moderate_account',{ p_user:user.user_id,p_status:active?'suspended':'active' }); await load(); }),active?'danger':''));
       } else info.append(el('p',{ class:'hint' },'Pemilik platform'));
@@ -176,6 +177,7 @@ async function users() {
 
 async function settings(viewer,global,navigate) {
   const root=el('section',{},el('h1',{},global?'Pengaturan platform':'Pengaturan akun'),el('p',{},viewer.email));
+  if (viewer.deletion_pending) { root.append(el('p',{ class:'account-note' },'Penghapusan sebelumnya belum selesai. Akun dibekukan agar tidak ada aset baru. Masukkan kata sandi dan coba ulang.'),deletionForm(viewer,navigate)); return root; }
   const feedback=status(),name=field('Nama pengelola','display-name',{ value:viewer.display_name,maxlength:100 });
   const profile=el('form',{ class:'settings-form' },name.wrap,el('button',{ type:'submit' },'Simpan nama'),feedback);
   profile.addEventListener('submit',(e) => { e.preventDefault(); void busy(profile.querySelector('button'),feedback,() => rpc('save_profile',{ p_name:name.input.value }),'Nama diperbarui.'); }); root.append(profile);
@@ -198,10 +200,15 @@ async function settings(viewer,global,navigate) {
     const used=data.storageBytes/q.storage_bytes;
     root.append(el('h2',{},'Kuota Anda'),el('p',{},`${number(data.campaigns)} / ${number(q.campaigns)} kampanye. ${number(data.published)} / ${number(q.published)} terbit. ${(data.storageBytes/1048576).toFixed(1)} / ${(q.storage_bytes/1048576).toFixed(0)} MB template privat.`));
     if (used>=.7) root.append(el('p',{ class:'account-note' },used>=.9?'Penyimpanan hampir penuh (90% atau lebih). Hubungi pengelola untuk menyesuaikan kuota.':'Penyimpanan sudah mencapai 70%. Pantau sebelum mengunggah template baru.'));
-    const password=field('Kata sandi untuk konfirmasi','delete-password',{ type:'password',autocomplete:'current-password',required:true });
-    const deletion=el('form',{ class:'settings-form' },el('h2',{},'Hapus akun'),el('p',{},'Menghapus akun, kampanye, template, dan statistik aktif secara permanen. Salinan yang sudah diunduh orang lain dan backup penyedia tidak dapat ditarik kembali.'),password.wrap);
-    const note=status(),submit=el('button',{ type:'submit',class:'danger' },'Hapus akun dan kampanye'); deletion.append(submit,note);
-    deletion.addEventListener('submit',(e) => { e.preventDefault(); confirmAction('Hapus akun secara permanen?','Semua kampanye Anda akan dihapus. Tindakan ini tidak dapat dibatalkan.','Hapus akun',async () => { const db=await supabase(); const login=await db.auth.signInWithPassword({ email:viewer.email,password:password.input.value }); if (login.error) throw login.error; await edge('delete-account',{ confirm:viewer.email }); await db.auth.signOut({ scope:'local' }); navigate('/',true); }); }); root.append(deletion);
+    root.append(deletionForm(viewer,navigate));
   }
   return root;
+}
+
+function deletionForm(viewer,navigate) {
+  const password=field('Kata sandi untuk konfirmasi','delete-password',{ type:'password',autocomplete:'current-password',required:true });
+  const deletion=el('form',{ class:'settings-form' },el('h2',{},'Hapus akun'),el('p',{},'Menghapus akun, kampanye, template, dan statistik aktif secara permanen. Salinan yang sudah diunduh orang lain dan backup penyedia tidak dapat ditarik kembali.'),password.wrap);
+  const submit=el('button',{ type:'submit',class:'danger' },'Hapus akun dan kampanye'); deletion.append(submit);
+  deletion.addEventListener('submit',(e) => { e.preventDefault(); confirmAction('Hapus akun secara permanen?','Semua kampanye Anda akan dihapus. Tindakan ini tidak dapat dibatalkan.','Hapus akun',async () => { const db=await supabase(); const login=await db.auth.signInWithPassword({ email:viewer.email,password:password.input.value }); if (login.error) throw login.error; await edge('delete-account',{ confirm:viewer.email }); await db.auth.signOut({ scope:'local' }); navigate('/',true); }); });
+  return deletion;
 }

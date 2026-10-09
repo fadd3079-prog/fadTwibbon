@@ -39,9 +39,10 @@ export function createEditor(template, { slug = 'preview', caption = '', onDownl
   slider.addEventListener('input', () => { if (state) change(transformAt(state, center, center, coverScale(frame, photo, state.rotation) * Number(slider.value) / 100, state.rotation)); });
   controls.append(el('label', { class: 'zoom-label' }, 'Zoom', slider));
   const help = el('p', { id: 'editor-help', class: 'hint' }, 'Geser foto atau cubit untuk zoom. Template tetap di tempatnya.');
-  const root = el('section', { class: 'editor', 'aria-label': preview ? 'Pratinjau template' : 'Buat Twibbon' }, el('div', { class: 'canvas-wrap' }, canvas), input, select, controls, help);
-  if (!preview) root.append(download, save, button('Salin Caption', () => copy(caption, feedback), 'caption-button'));
-  root.append(feedback, el('p', { class: 'privacy-note' }, 'Foto Anda diproses di perangkat ini, tidak diunggah.'));
+  const tools=el('div',{ class:'editor-tools' },input,select,controls,help);
+  const root = el('section', { class: preview ? 'editor editor-preview' : 'editor', 'aria-label': preview ? 'Pratinjau template' : 'Buat Twibbon' }, el('div', { class: 'canvas-wrap' }, canvas), tools);
+  if (!preview) tools.append(download, save, button('Salin Caption', () => copy(caption, feedback), 'caption-button'));
+  tools.append(feedback, el('p', { class: 'privacy-note' }, 'Foto Anda diproses di perangkat ini, tidak diunggah.'));
 
   function requestRender() {
     if (disposed || raf) return;

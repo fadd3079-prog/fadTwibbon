@@ -9,8 +9,9 @@ export async function context() {
 }
 
 export async function signOut() {
-  const { error } = await (await supabase()).auth.signOut();
-  if (error) throw error;
+  const db=await supabase();
+  const { error } = await db.auth.signOut();
+  if (error) await db.auth.signOut({ scope:'local' });
 }
 
 export const callbackUrl = () => `${location.origin}/auth/callback`;

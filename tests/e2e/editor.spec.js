@@ -24,7 +24,7 @@ test('local photo, transform, fixed template, original-resolution export and pri
   const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{ name:'Unduh Twibbon' }).click()]);
   const data=await readFile(await download.path()); expect(data.readUInt32BE(16)).toBe(1080); expect(data.readUInt32BE(20)).toBe(720);
   expect(download.suggestedFilename()).toBe('fadTwibbon-uji-editor.png');
-  const pixels=await page.evaluate(async () => { const response=await fetch(document.querySelector('.save-result').href),image=await createImageBitmap(await response.blob()),canvas=document.createElement('canvas'); canvas.width=image.width; canvas.height=image.height; const ctx=canvas.getContext('2d'); ctx.drawImage(image,0,0); const border=[...ctx.getImageData(0,0,1,1).data],center=[...ctx.getImageData(540,360,1,1).data]; image.close(); return { border,center }; });
+  const pixels=await page.evaluate(async () => { const image=new Image(); image.src=document.querySelector('.save-result').href; await image.decode(); const canvas=document.createElement('canvas'); canvas.width=image.width; canvas.height=image.height; const ctx=canvas.getContext('2d'); ctx.drawImage(image,0,0); const border=[...ctx.getImageData(0,0,1,1).data],center=[...ctx.getImageData(540,360,1,1).data]; image.src=''; return { border,center }; });
   expect(pixels.border).toEqual([245,200,30,255]); expect(pixels.center).toEqual([210,40,70,255]);
   await expect(page.getByText('PNG siap.',{ exact:false })).toBeVisible();
   await expect.poll(() => uploads.length).toBe(1);
@@ -53,12 +53,29 @@ test('pinch changes only the photo and keyboard controls remain reachable',async
 });
 test('mobile, tablet, desktop and 200% text reflow have no horizontal overflow',async ({ page }) => {
   await campaign(page);
-  for (const width of [320,390,700,900,1280]) {
+  for (const theme of ['light','dark']) {
+    await page.getByRole('combobox',{ name:'Tema tampilan' }).selectOption(theme);
+    for (const width of [320,390,700,900,1280]) {
     await page.setViewportSize({ width,height:900 });
     const layout=await page.evaluate(() => ({ width:innerWidth,scroll:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right>innerWidth+1).map((e) => [e.tagName,e.className,Math.round(e.getBoundingClientRect().right)]) }));
     expect(layout.scroll,JSON.stringify(layout)).toBeLessThanOrEqual(width);
+    }
+    await page.setViewportSize({ width:1280,height:900 });
+    await page.screenshot({ path:`test-results/editor-${theme}.png`,fullPage:true });
   }
   await page.setViewportSize({ width:320,height:900 }); await page.evaluate(() => { document.documentElement.style.fontSize='200%'; }); expect(await page.evaluate(() => document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('theme selection persists and follows system when requested',async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('combobox',{ name:'Tema tampilan' }).selectOption('light');
+  await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+  await page.reload(); await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+  await page.getByRole('combobox',{ name:'Tema tampilan' }).selectOption('dark');
+  await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+  await page.getByRole('combobox',{ name:'Tema tampilan' }).selectOption('system');
+  await page.emulateMedia({ colorScheme:'light' }); await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+  await page.emulateMedia({ colorScheme:'dark' }); await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
 });
 test('home, login, registration, recovery, legal pages, unknown campaign and protected routes',async ({ page }) => {
   await page.goto('/'); await page.getByRole('link',{ name:'Masuk admin' }).click(); await expect(page.getByRole('heading',{ name:'Masuk',exact:true })).toBeVisible();

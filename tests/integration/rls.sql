@@ -20,6 +20,8 @@ select pg_temp.denied('update public.user_roles set role=''super_admin''','role 
 select pg_temp.denied('select public.moderate_account('''||(select id from identities where kind='b')::text||''',''suspended'')','admin moderation denied');
 select pg_temp.denied('select public.commit_template(null,null,null,null,null,1,1,1,null)','direct template commit denied');
 select pg_temp.denied('select public.accept_download(gen_random_uuid(),gen_random_uuid(),repeat(''a'',64))','direct analytics RPC denied');
+select pg_temp.denied('select public.start_account_deletion('''||(select id from identities where kind='b')::text||''')','direct elevated deletion denied');
+select pg_temp.denied('select public.save_campaign(null,''Duplicate'',''test-'||(select id from identities where kind='a')::text||''','''','''',null)','duplicate slug rejected');
 reset role;
 create temporary table test_campaigns as select c.* from public.campaigns c where c.owner_id in(select id from identities);
 grant select on test_campaigns to authenticated,anon,service_role;
@@ -74,6 +76,13 @@ select set_config('request.jwt.claims',jsonb_build_object('sub',(select id from 
 select public.moderate_account((select id from identities where kind='a'),'active');
 set local role service_role;
 select pg_temp.check_result(public.public_campaign('test-'||(select id from identities where kind='a')::text) is not null,'reactivation restores public campaign');
+set local role authenticated;
+select set_config('request.jwt.claims',jsonb_build_object('sub',(select id from identities where kind='a'),'role','authenticated')::text,true);
+select pg_temp.check_result((select count(*)=1 from storage.objects where bucket_id='templates' and name=(select path from asset)),'owner can read own private template');
+do $$ declare max_campaigns int; begin select (value->>'campaigns')::int into max_campaigns from public.platform_settings where key='quotas'; for i in 1..max_campaigns-1 loop perform public.save_campaign(null,'Quota test','quota-'||gen_random_uuid()::text,'','',null); end loop; end $$;
+select pg_temp.denied('select public.save_campaign(null,''Over quota'',''over-quota-test'','''','''',null)','campaign count quota enforced');
+select set_config('request.jwt.claims',jsonb_build_object('sub',(select id from identities where kind='super'),'role','authenticated')::text,true);
+select pg_temp.denied('select public.update_quotas(null,null,null)','null quotas rejected');
 reset role;
 select jsonb_build_object('passed',count(*),'tests',jsonb_agg(name order by name),'isolation','all test records rolled back') as report from results;
 rollback;

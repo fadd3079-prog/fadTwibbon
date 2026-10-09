@@ -26,3 +26,7 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Browser tests with production security headers
+        run: npm run test:production

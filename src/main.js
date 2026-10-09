@@ -2,6 +2,7 @@ import './styles/base.css';
 import './styles/editor.css';
 import { el,link,button,status,message,errorText } from './utils/ui.js';
 import { configured, supabase } from './services/supabase.js';
+import { themeControl } from './utils/theme.js';
 
 const app = document.getElementById('app');
 let destroy = () => {}, request = null, sequence = 0, authSubscription;
@@ -26,6 +27,7 @@ async function route() {
   const publicEditor = path.startsWith('/c/');
   const header = el('header',{ class:'site-header' },el('div',{ class:'inner' },el('a',{ class:'brand',href:'/' },'fad',el('span',{},'Twibbon'))));
   if (!publicEditor) header.querySelector('.inner').append(el('nav',{ 'aria-label':'Akun' },link('Masuk','/login')));
+  header.querySelector('.inner').append(themeControl());
   const footer = el('footer',{ class:'site-footer' },link('Privasi','/privacy'),link('Ketentuan','/terms'));
   app.replaceChildren(header,main,footer);
   const loading=status(); message(loading,publicEditor?'Memuat kampanye…':'Memuat halaman…'); main.append(loading);
@@ -47,13 +49,14 @@ async function route() {
       const viewer=await context();
       if (!viewer) { navigate('/login',true); return; }
       header.querySelector('.inner nav').replaceChildren(button('Keluar',async () => { main.replaceChildren(el('p',{},'Keluar…')); try { await signOut(); navigate('/login',true); } catch { navigate('/login',true); } }));
-      if (!viewer.verified || viewer.status==='suspended') page=el('div',{},el('h1',{},'Akun tidak dapat digunakan'),el('p',{},viewer.status==='suspended'?'Akun Anda ditangguhkan. Hubungi pengelola platform.':'Verifikasi email Anda sebelum mengakses dashboard.'));
+      if (!viewer.verified || (viewer.status==='suspended' && !(viewer.deletion_pending && path==='/admin/settings'))) page=el('div',{},el('h1',{},'Akun tidak dapat digunakan'),el('p',{},viewer.deletion_pending?'Penghapusan akun belum selesai. Coba ulang untuk melanjutkan pembersihan.':viewer.status==='suspended'?'Akun Anda ditangguhkan. Hubungi pengelola platform.':'Verifikasi email Anda sebelum mengakses dashboard.'),viewer.deletion_pending?link('Lanjutkan penghapusan','/admin/settings','button'):null);
       else if (path.startsWith('/superadmin') && viewer.role!=='super_admin') page=el('div',{},el('h1',{},'Akses ditolak'),link('Dashboard Anda','/admin'));
       else page=await (await import('./pages/dashboard.js')).dashboardPage(path,viewer,navigate);
     } else page=el('div',{},el('h1',{},'Halaman tidak ditemukan'),link('Ke beranda','/'));
     if (seq!==sequence) { page?.destroy?.(); return; }
     main.replaceChildren(page.root || page); destroy=page.destroy || (() => {});
-    main.focus({ preventScroll:true }); window.scrollTo(0,0);
+    if (seq>1) { const heading=main.querySelector('h1'); if (heading) { heading.tabIndex=-1; heading.focus({ preventScroll:true }); } }
+    window.scrollTo(0,0);
   } catch (error) {
     if (seq!==sequence || error.name==='AbortError') return;
     main.replaceChildren(el('h1',{},error.message==='NOT_FOUND'?'Kampanye tidak tersedia':'Halaman gagal dimuat'),el('p',{ role:'alert' },errorText(error)),button('Coba lagi',() => void route()),link('Ke beranda','/','button'));

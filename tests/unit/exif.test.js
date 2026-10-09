@@ -37,3 +37,8 @@ test('corrupt JPEG throws friendly error instead of RangeError', () => {
   const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xff, 0xff]);
   assert.throws(() => sourceDimensions(bytes, 'jpeg'), /Foto rusak atau format tidak didukung/);
 });
+
+test('short EXIF segment is ignored without out-of-bounds reads',() => {
+  const bytes=new Uint8Array([0xff,0xd8,0xff,0xe1,0,14,0x45,0x78,0x69,0x66,0,0,0x49,0x49,0x2a,0,0,0,0xff,0xc0,0,0x0b,8,0,40,0,80,1,0x11,0,0xff,0xda]);
+  assert.deepEqual(sourceDimensions(bytes,'jpeg'),{ width:80,height:40 });
+});

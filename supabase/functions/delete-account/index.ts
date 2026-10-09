@@ -8,7 +8,7 @@ Deno.serve(async (req) => {
     if (body.confirm!==user.email || profile.role==='super_admin' || !user.last_sign_in_at || Date.now()-Date.parse(user.last_sign_in_at)>600000) throw new Error('FORBIDDEN');
     const db = service();
     // Freeze the account before cleanup so concurrent editors cannot create new assets.
-    const frozen = await db.from('profiles').update({ status:'suspended',deletion_pending:true }).eq('user_id',user.id);
+    const frozen = await db.rpc('start_account_deletion',{ p_actor:user.id });
     if (frozen.error) throw frozen.error;
     const campaigns = await db.from('campaigns').select('id').eq('owner_id',user.id);
     if (campaigns.error) throw campaigns.error;
