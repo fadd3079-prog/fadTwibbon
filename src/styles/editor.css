@@ -1,39 +1,30 @@
-/* fadTwibbon — iOS-style photo editor */
-
 .campaign-page {
     max-width: 620px;
     margin: auto;
 }
 
 .campaign-page h1 {
-    font-size: clamp(1.5rem, 3.5vw, 2rem);
-    margin-bottom: 0.5rem;
-    text-align: center;
-}
-
-.campaign-page .campaign-sub {
-    text-align: center;
-    color: var(--muted);
-    margin-bottom: 1.5rem;
+    font-size: clamp(1.4rem, 3vw, 1.85rem);
+    margin-bottom: 1.25rem;
 }
 
 .editor {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     min-width: 0;
-    gap: 1rem;
+    gap: .85rem;
 }
 
-.editor p { margin: 0; }
+.editor p {
+    margin: 0;
+}
 
 .canvas-wrap {
     min-width: 0;
     background-color: #fff;
-    background-image: conic-gradient(#e9ebf0 25%, transparent 0 50%, #e9ebf0 0 75%, transparent 0);
+    background-image: conic-gradient(#e6e8e4 25%, transparent 0 50%, #e6e8e4 0 75%, transparent 0);
     background-size: 20px 20px;
-    border-radius: var(--radius-l);
-    overflow: hidden;
-    box-shadow: var(--card-shadow);
+    border: 1px solid var(--line);
 }
 
 .editor canvas {
@@ -43,37 +34,30 @@
     touch-action: none;
     cursor: grab;
 }
-.editor canvas:active { cursor: grabbing; }
 
-/* Primary CTA */
-.editor .choose {
-    width: 100%;
-    min-height: 52px;
-    font-size: 1.05rem;
-    border-radius: var(--radius-l);
+.editor canvas:active {
+    cursor: grabbing;
 }
 
-/* Bottom toolbar — iOS style */
+.editor .choose {
+    width: 100%;
+    font-weight: 600;
+}
+
 .editor-controls {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    padding: 0.75rem;
+    gap: .5rem;
+    padding: 0;
     margin: 0;
     border: 0;
     min-width: 0;
-    background: var(--surface);
-    border-radius: var(--radius-l);
-    box-shadow: var(--card-shadow);
 }
 
 .editor-controls button {
     flex: 1 1 auto;
-    padding: 0.6rem 0.5rem;
+    padding: .5rem .6rem;
     min-width: 44px;
-    min-height: 48px;
-    border-radius: var(--radius-m);
-    font-size: 0.9rem;
 }
 
 .editor-controls .zoom-label {
@@ -81,53 +65,44 @@
     align-items: center;
     gap: 1rem;
     width: 100%;
-    font-size: 0.85rem;
-    color: var(--muted);
-    padding: 0 0.25rem;
+    font-size: .875rem;
 }
 
-/* Download section */
 .editor .primary {
     width: 100%;
-    min-height: 52px;
-    font-size: 1.05rem;
-    border-radius: var(--radius-l);
+    min-height: 48px;
 }
 
 .editor .privacy-note {
-    padding: 0.9rem 1.1rem;
-    background: var(--surface-2);
-    border-radius: var(--radius-m);
-    font-size: 0.85rem;
+    padding-top: .4rem;
+    border-top: 1px solid var(--soft-line);
 }
 
-.caption-button { width: 100%; }
-
-.caption-card {
-    background: var(--surface);
-    border-radius: var(--radius-l);
-    box-shadow: var(--card-shadow);
-    padding: 1.1rem 1.25rem;
-}
-.caption-card p {
-    font-size: 0.95rem;
-    white-space: pre-wrap;
-    margin-bottom: 0.9rem;
+.caption-button {
+    width: 100%;
 }
 
 .save-result {
     min-height: 44px;
-    padding: 0.6rem 0;
-    text-align: center;
-    font-weight: 600;
-    color: var(--success);
+    padding: .5rem 0;
 }
-.save-result[hidden] { display: none; }
 
-@media (min-width: 700px) {
-    .campaign-page { max-width: 560px; }
-    .campaign-page h1 { margin-top: 0.5rem; }
+.save-result[hidden] {
+    display: none;
 }
-@media (min-width: 1050px) {
-    .campaign-page { max-width: 620px; }
+
+@media (min-width:700px) {
+    .campaign-page {
+        max-width: 560px;
+    }
+
+    .campaign-page h1 {
+        margin-top: .5rem;
+    }
+}
+
+@media (min-width:1050px) {
+    .campaign-page {
+        max-width: 620px;
+    }
 }
