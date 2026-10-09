@@ -34,7 +34,7 @@ export function createEditor(template, { slug = 'preview', caption = '', onDownl
   const zoom = (factor) => { if (state) change(transformAt(state, center, center, state.scale * factor, state.rotation)); };
   const rotate = (angle) => { if (state) change({ ...state, rotation: state.rotation + angle }); };
   controls.append(button('−', () => zoom(1 / 1.12)), button('+', () => zoom(1.12)), button('Putar kiri', () => rotate(-Math.PI / 12)), button('Putar kanan', () => rotate(Math.PI / 12)), button('Atur ulang', () => { if (photo) change(initialTransform(frame, photo)); }));
-  controls.children[1].setAttribute('aria-label', 'Perkecil foto'); controls.children[2].setAttribute('aria-label', 'Perbesar foto');
+  controls.children[0].setAttribute('aria-label', 'Perkecil foto'); controls.children[1].setAttribute('aria-label', 'Perbesar foto');
   const slider = el('input', { type: 'range', min: '100', max: '500', value: '100', step: '1', 'aria-label': 'Perbesaran foto' });
   slider.addEventListener('input', () => { if (state) change(transformAt(state, center, center, coverScale(frame, photo, state.rotation) * Number(slider.value) / 100, state.rotation)); });
   controls.append(el('label', { class: 'zoom-label' }, 'Zoom', slider));
@@ -78,7 +78,8 @@ export function createEditor(template, { slug = 'preview', caption = '', onDownl
   }
   canvas.addEventListener('pointerdown', (event) => {
     if (!photo || pointers.size >= 2) return;
-    canvas.setPointerCapture(event.pointerId); pointers.set(event.pointerId, pointerToFrame(event, canvas.getBoundingClientRect(), frame)); startGesture();
+    try { canvas.setPointerCapture(event.pointerId); } catch { /* pointer already released; gesture continues without capture */ }
+    pointers.set(event.pointerId, pointerToFrame(event, canvas.getBoundingClientRect(), frame)); startGesture();
   });
   canvas.addEventListener('pointermove', (event) => {
     if (!pointers.has(event.pointerId) || !gesture) return;

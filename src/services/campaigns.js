@@ -10,7 +10,11 @@ export async function publicCampaign(slug, signal) {
 export async function listCampaigns(page = 0, filter = '', global = false) {
   let query = (await supabase()).from('campaigns').select('id,title,slug,status,updated_at,owner_id', { count: 'exact' }).order('updated_at', { ascending: false }).range(page * 12, page * 12 + 11);
   if (filter) query = query.eq('status', filter);
-  if (!global) { const { data: { user } } = await (await supabase()).auth.getUser(); query = query.eq('owner_id', user.id); }
+  if (!global) {
+    const { data: { user } } = await (await supabase()).auth.getUser();
+    if (!user) throw Object.assign(new Error('Sesi berakhir. Masuk kembali.'), { friendly: true });
+    query = query.eq('owner_id', user.id);
+  }
   const { data, count, error } = await query;
   if (error) throw error;
   return { data, count };
