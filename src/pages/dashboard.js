@@ -37,12 +37,13 @@ export function createDashboardLayout(viewer,navigate) {
     const seq=++sequence;
     currentDestroy(); currentDestroy=() => {}; active(path);
     const loading=el('div',{ class:'section-loading',role:'status' },el('span',{ class:'spinner','aria-hidden':'true' }),el('span',{},'Memuat…'));
-    workspace.replaceChildren(viewer.status==='pending'?el('p',{ class:'account-note' },'Akun menunggu persetujuan. Publikasi belum tersedia.'):null,loading);
+    const accountNote=() => viewer.status==='pending' ? [el('p',{ class:'account-note' },'Akun menunggu persetujuan. Publikasi belum tersedia.')] : [];
+    workspace.replaceChildren(...accountNote(),loading);
     try {
       const content=await section(path);
       if (disposed || seq!==sequence) { content.destroy?.(); return; }
       currentDestroy=content.destroy || (() => {});
-      workspace.replaceChildren(viewer.status==='pending'?el('p',{ class:'account-note' },'Akun menunggu persetujuan. Publikasi belum tersedia.'):null,content.root || content);
+      workspace.replaceChildren(...accountNote(),content.root || content);
       const heading=workspace.querySelector('h1');
       if (heading) { heading.tabIndex=-1; heading.focus({ preventScroll:true }); }
     } catch {
@@ -87,7 +88,7 @@ async function campaigns(global,base) {
 }
 
 async function campaignForm(id,viewer,base,navigate) {
-  let current=id?await getCampaign(id):null, selectedFile=null, editor=null, disposed=false, previewSequence=0;
+  let current=id?await getCampaign(id):null, selectedFile=null, editor=null, disposed=false, previewSequence=0, submitting=false;
   const root=el('section',{ class:'dashboard-page campaign-editor-page' },el('div',{ class:'page-heading' },el('div',{},el('h1',{},id?'Edit Kampanye':'Buat Kampanye')),link('Kembali',base,'button',ArrowLeft)));
   const form=el('form',{ class:'campaign-form' }),fields=el('div',{ class:'form-surface' },el('h2',{},'Informasi kampanye')),preview=el('aside',{ class:'form-preview','aria-label':'Pratinjau' },el('div',{ class:'preview-heading' },el('p',{ class:'section-label' },'Template'),el('h2',{},'Pratinjau')));
   const inputs={};
@@ -111,10 +112,11 @@ async function campaignForm(id,viewer,base,navigate) {
   template.input.addEventListener('change',async () => {
     const file=template.input.files[0]; if (!file) return;
     const seq=++previewSequence; message(feedback,'Memeriksa template…');
-    try { const image=await validateTemplate(file); if (seq===previewSequence && !disposed) selectedFile=file; await setPreview(image,seq); message(feedback,'Template siap. Simpan untuk mengunggah.'); }
-    catch (error) { template.input.value=''; selectedFile=null; message(feedback,error.message,true); }
+    try { const image=await validateTemplate(file); if (seq===previewSequence && !disposed) selectedFile=file; await setPreview(image,seq); publishButton.disabled=viewer.status!=='active'; message(feedback,'Template siap. Simpan untuk mengunggah.'); }
+    catch (error) { template.input.value=''; selectedFile=null; publishButton.disabled=viewer.status!=='active' || !current?.template_id; message(feedback,error.message,true); }
   });
   const save=el('button',{ type:'submit',class:'primary' },icon(Save),el('span',{},current?.status==='published'?'Simpan Perubahan':'Simpan')), publishButton=button(current?.status==='published'?'Perbarui':'Terbitkan',() => void perform(publishButton,true),'',Send);
+  publishButton.disabled=viewer.status!=='active' || !current?.template_id;
   fields.append(el('div',{ class:'actions' },save,publishButton),feedback); form.append(fields,preview); root.append(form);
   async function saveAll() {
     const values=Object.fromEntries(Object.entries(inputs).map(([key,input]) => [key,input.value]));
@@ -124,13 +126,20 @@ async function campaignForm(id,viewer,base,navigate) {
     return current;
   }
   async function perform(control,publishing=false) {
+    if (submitting) return;
+    if (publishing && !current?.template_id && !selectedFile) { message(feedback,'Tambahkan template PNG sebelum menerbitkan.',true); return; }
+    submitting=true;
     save.disabled=true; publishButton.disabled=true; template.input.disabled=true;
-    await busy(control,feedback,async () => {
-      await saveAll();
-      if (publishing) current=await publish(current);
-      navigate(`${base}/campaigns/${current.id}`,true);
-    });
-    if (!disposed) { save.disabled=false; publishButton.disabled=false; template.input.disabled=['published','disabled'].includes(current?.status); }
+    try {
+      await busy(control,feedback,async () => {
+        await saveAll();
+        if (publishing) current=await publish(current);
+        navigate(`${base}/campaigns/${current.id}`,true);
+      });
+    } finally {
+      submitting=false;
+      if (!disposed) { save.disabled=false; publishButton.disabled=viewer.status!=='active' || !current?.template_id; template.input.disabled=['published','disabled'].includes(current?.status); }
+    }
   }
   form.addEventListener('submit',(event) => { event.preventDefault(); void perform(save); });
   if (current) {

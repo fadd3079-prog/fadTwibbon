@@ -23,7 +23,10 @@ export async function edge(name, body) {
   const { data, error } = await db.functions.invoke(name, { body });
   if (error) {
     const details = await error.context?.json?.().catch(() => null);
-    throw new Error(details?.error || error.message);
+    const failure = new Error(details?.error || (error.name==='FunctionsFetchError'?'NETWORK_ERROR':'SERVICE_UNAVAILABLE'));
+    failure.code=details?.error || error.name;
+    failure.status=error.context?.status;
+    throw failure;
   }
   return data;
 }

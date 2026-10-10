@@ -18,7 +18,7 @@ test('login failure, verification resend and password recovery give useful feedb
   await page.goto('/login'); await page.getByLabel('Email',{ exact:true }).fill('uji@example.invalid'); await page.getByLabel('Kata sandi',{ exact:true }).fill('Katasandi!123456');
   await page.getByRole('button',{ name:'Tampilkan' }).click(); await expect(page.getByLabel('Kata sandi',{ exact:true })).toHaveAttribute('type','text'); await page.getByRole('button',{ name:'Sembunyikan' }).click();
   await page.getByRole('button',{ name:'Masuk',exact:true }).click(); await expect(page.getByText('Email atau kata sandi tidak cocok.')).toBeVisible();
-  await page.getByRole('button',{ name:'Kirim ulang verifikasi' }).click(); await expect(page.getByText('Jika akun belum terverifikasi, email verifikasi akan dikirim.')).toBeVisible();
-  await page.getByRole('link',{ name:'Lupa kata sandi?' }).click(); await page.getByLabel('Email',{ exact:true }).fill('uji@example.invalid'); await page.getByRole('button',{ name:'Kirim tautan',exact:true }).click(); await expect(page.getByText('Jika email terdaftar, tautan pemulihan akan dikirim.',{ exact:false })).toBeVisible();
+  await page.getByRole('button',{ name:'Kirim Ulang Verifikasi' }).click(); await expect(page.getByText('Email verifikasi sudah dikirim.')).toBeVisible();
+  await page.getByRole('link',{ name:'Lupa kata sandi?' }).click(); await page.getByLabel('Email',{ exact:true }).fill('uji@example.invalid'); await page.getByRole('button',{ name:'Kirim tautan',exact:true }).click(); await expect(page.getByText('Jika email terdaftar, tautan pemulihan akan dikirim.')).toBeVisible();
   await page.goto('/auth/callback?error=expired'); await expect(page.getByRole('heading',{ name:'Tautan tidak berlaku' })).toBeVisible();
 });

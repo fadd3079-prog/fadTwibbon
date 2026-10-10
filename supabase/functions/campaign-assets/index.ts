@@ -6,13 +6,14 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return reply(req,{ error:'METHOD_NOT_ALLOWED' },405);
   let uploaded: string | null = null;
   let uploadedSize=0;
-  const admin = service();
+  let admin: ReturnType<typeof service> | null = null;
   try {
+    admin = service();
     const { db,user,profile } = await identity(req);
     const multipart = req.headers.get('content-type')?.startsWith('multipart/form-data');
     let body;
     if (multipart) {
-      const data = await bytes(req,3145728+16384);
+      const data = await bytes(req,3145728+16384,'TEMPLATE_TOO_LARGE');
       body = await new Response(data.buffer as ArrayBuffer, { headers: { 'Content-Type':req.headers.get('content-type')! } }).formData();
     } else body = await json(req);
     if (!multipart && body.action==='cleanup') {
@@ -29,7 +30,7 @@ Deno.serve(async (req) => {
     if (multipart) {
       if (c.status==='published' || c.status==='disabled') throw new Error('FORBIDDEN');
       const file = body.get('file');
-      if (!(file instanceof File)) throw new Error('VALIDATION_ERROR');
+      if (!(file instanceof File)) throw new Error('TEMPLATE_REQUIRED');
       const data = new Uint8Array(await file.arrayBuffer());
       const dimensions = validatePng(data);
       const digest = await crypto.subtle.digest('SHA-256',data);
@@ -46,7 +47,8 @@ Deno.serve(async (req) => {
       await cleanup(c.owner_id);
       return reply(req,result.data);
     }
-    if (body.action!=='publish' || !c.templates) throw new Error('VALIDATION_ERROR');
+    if (body.action!=='publish') throw new Error('VALIDATION_ERROR');
+    if (!c.templates) throw new Error('MISSING_TEMPLATE');
     const t = c.templates;
     const owner = await admin.from('profiles').select('status').eq('user_id',c.owner_id).single();
     if (owner.error || owner.data?.status!=='active') throw new Error('APPROVAL_REQUIRED');
@@ -60,9 +62,11 @@ Deno.serve(async (req) => {
     if (result.error) throw result.error;
     return reply(req,result.data);
   } catch (error) {
-    if (uploaded) {
-      const removed=await admin.storage.from('templates').remove([uploaded]);
-      if (removed.error) await admin.rpc('queue_unregistered_template',{ p_owner:uploaded.split('/')[0],p_path:uploaded,p_size:uploadedSize });
+    if (uploaded && admin) {
+      try {
+        const removed=await admin.storage.from('templates').remove([uploaded]);
+        if (removed.error) await admin.rpc('queue_unregistered_template',{ p_owner:uploaded.split('/')[0],p_path:uploaded,p_size:uploadedSize });
+      } catch { /* The original failure must still return a CORS-safe response. */ }
     }
     return failure(req,error);
   }

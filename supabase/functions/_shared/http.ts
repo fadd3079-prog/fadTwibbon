@@ -19,15 +19,15 @@ export function preflight(req: Request, publicRead = false) {
   if (!publicRead && origin && !(Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s) => s.trim()).includes(origin)) return reply(req, { error: 'FORBIDDEN' }, 403);
   return null;
 }
-export async function bytes(req: Request, limit: number): Promise<Uint8Array> {
-  if (Number(req.headers.get('content-length') || 0) > limit) throw new Error('VALIDATION_ERROR');
+export async function bytes(req: Request, limit: number, limitCode = 'VALIDATION_ERROR'): Promise<Uint8Array> {
+  if (Number(req.headers.get('content-length') || 0) > limit) throw new Error(limitCode);
   const reader = req.body?.getReader();
   if (!reader) throw new Error('VALIDATION_ERROR');
   const chunks: Uint8Array[] = []; let size = 0;
   while (true) {
     const { done, value } = await reader.read(); if (done) break;
     size += value.length;
-    if (size > limit) { await reader.cancel(); throw new Error('VALIDATION_ERROR'); }
+    if (size > limit) { await reader.cancel(); throw new Error(limitCode); }
     chunks.push(value);
   }
   const data = new Uint8Array(size); let offset = 0;
@@ -47,8 +47,11 @@ export async function identity(req: Request, allowDeleting = false) {
 }
 export function failure(req: Request, error: unknown) {
   const message = error instanceof Error ? error.message : (error as { message?: string })?.message || '';
-  const code = ['UNAUTHORIZED','FORBIDDEN','APPROVAL_REQUIRED','QUOTA_EXCEEDED','CONFLICT','NOT_FOUND','VALIDATION_ERROR'].find((c) => message.includes(c)) || 'SERVICE_UNAVAILABLE';
-  return reply(req, { error: code }, code === 'UNAUTHORIZED' ? 401 : ['FORBIDDEN','APPROVAL_REQUIRED'].includes(code) ? 403 : code === 'CONFLICT' ? 409 : code === 'NOT_FOUND' ? 404 : code === 'SERVICE_UNAVAILABLE' ? 503 : 400);
+  const codes = ['UNAUTHORIZED','FORBIDDEN','APPROVAL_REQUIRED','QUOTA_EXCEEDED','CONFLICT','NOT_FOUND','VALIDATION_ERROR','MISSING_TEMPLATE','TEMPLATE_REQUIRED','TEMPLATE_INVALID','TEMPLATE_TOO_LARGE','TEMPLATE_DIMENSIONS','TEMPLATE_ENCODING','TEMPLATE_TRANSPARENCY'];
+  const code = codes.find((candidate) => message.includes(candidate)) || 'SERVICE_UNAVAILABLE';
+  const status = code === 'UNAUTHORIZED' ? 401 : ['FORBIDDEN','APPROVAL_REQUIRED'].includes(code) ? 403 : code === 'CONFLICT' ? 409 : code === 'NOT_FOUND' ? 404 : code.startsWith('TEMPLATE_') || code==='MISSING_TEMPLATE' ? 422 : code === 'SERVICE_UNAVAILABLE' ? 503 : 400;
+  console.error(JSON.stringify({ event:'request_failed',code,status,message }));
+  return reply(req, { error: code }, status);
 }
 export async function cleanup(owner: string | null = null) {
   const db = service();

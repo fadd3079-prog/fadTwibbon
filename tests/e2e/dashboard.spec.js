@@ -28,6 +28,7 @@ async function dashboard(page,role='admin') {
   });
   await page.route('**/functions/v1/campaign-assets',async (route) => {
     const req=route.request();
+    calls.push({ name:'campaign-assets',contentType:req.headers()['content-type'] });
     if (req.headers()['content-type'].startsWith('multipart/')) { t={ id:templateId,storage_path:`${userId}/${campaignId}/${templateId}.png`,width:1080,height:720 }; c.template_id=templateId; }
     else if (req.postDataJSON().action==='publish') { c.status='published'; c.published_at=updated(); }
     c && (c.updated_at=updated()); await route.fulfill({ json:c || { success:true } });
@@ -39,20 +40,27 @@ async function dashboard(page,role='admin') {
 
 test('admin creates, previews, publishes, shares, edits, unpublishes and archives',async ({ page }) => {
   const errors=[]; page.on('pageerror',(e) => errors.push(e.message));
-  await dashboard(page); await page.goto('/admin');
-  await expect(page.getByRole('heading',{ name:'Belum ada kampanye.' })).toBeVisible();
+  const calls=await dashboard(page); await page.goto('/admin');
+  await expect(page.locator('body')).not.toContainText(/(^|\s)null(\s|$)/);
+  await expect(page.getByRole('heading',{ name:'Belum Ada Kampanye' })).toBeVisible();
   await page.setViewportSize({ width:1280,height:900 }); await page.screenshot({ path:'test-results/admin-empty-desktop.png',fullPage:true });
   await page.getByRole('link',{ name:'Buat Kampanye' }).click();
   await page.setViewportSize({ width:390,height:844 }); await page.screenshot({ path:'test-results/campaign-form-mobile.png',fullPage:true });
   await page.getByLabel('Judul',{ exact:true }).fill('Kampanye uji lengkap'); await expect(page.getByLabel('Slug tautan')).toHaveValue('kampanye-uji-lengkap');
   await page.getByLabel('Caption',{ exact:true }).fill('Caption uji');
+  await expect(page.getByRole('button',{ name:'Terbitkan',exact:true })).toBeDisabled();
+  await page.getByLabel('Template PNG',{ exact:true }).setInputFiles({ name:'opaque.png',mimeType:'image/png',buffer:png(80,80,false) });
+  await expect(page.getByText('Template perlu area transparan minimal 1% untuk foto dan bingkai yang terlihat.')).toBeVisible();
+  await expect(page.getByRole('button',{ name:'Terbitkan',exact:true })).toBeDisabled();
   await page.getByLabel('Template PNG',{ exact:true }).setInputFiles({ name:'template.png',mimeType:'image/png',buffer:png(1080,720,true) });
   await expect(page.getByText('Template siap.',{ exact:false })).toBeVisible();
-  await page.getByRole('button',{ name:'Simpan',exact:true }).click(); await expect(page).toHaveURL(new RegExp(campaignId));
+  await expect(page.getByRole('button',{ name:'Terbitkan',exact:true })).toBeEnabled();
+  await page.getByRole('button',{ name:'Simpan',exact:true }).evaluate((control) => { control.click(); control.click(); }); await expect(page).toHaveURL(new RegExp(campaignId));
+  expect(calls.filter((call) => call.name==='campaign-assets')).toHaveLength(1);
   await page.getByRole('button',{ name:'Terbitkan',exact:true }).click(); await expect(page.getByRole('heading',{ name:'Status: Terbit' })).toBeVisible();
   await expect(page.getByLabel('Slug tautan')).toHaveAttribute('readonly','');
   await page.addInitScript(() => Object.defineProperty(navigator,'clipboard',{ value:{ writeText:() => Promise.reject(new Error('denied')) } }));
-  await page.getByRole('button',{ name:'Salin tautan' }).click();
+  await page.getByRole('button',{ name:'Salin Link' }).click();
   await page.getByLabel('Judul',{ exact:true }).fill('Kampanye diperbarui'); await page.getByRole('button',{ name:'Simpan perubahan' }).click();
   await page.getByRole('button',{ name:'Tarik Publikasi',exact:true }).click(); await page.getByRole('dialog').getByRole('button',{ name:'Batal' }).click();
   await page.getByRole('button',{ name:'Tarik Publikasi',exact:true }).click(); await page.keyboard.press('Escape'); await expect(page.getByRole('dialog')).toHaveCount(0);
