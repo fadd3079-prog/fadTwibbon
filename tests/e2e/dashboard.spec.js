@@ -44,7 +44,8 @@ test('admin creates, previews, publishes, shares, edits, unpublishes and archive
   await expect(page.locator('body')).not.toContainText(/(^|\s)null(\s|$)/);
   await expect(page.getByRole('heading',{ name:'Belum Ada Kampanye' })).toBeVisible();
   await page.setViewportSize({ width:1280,height:900 }); await page.screenshot({ path:'test-results/admin-empty-desktop.png',fullPage:true });
-  await page.getByRole('link',{ name:'Buat Kampanye' }).click();
+  await page.getByRole('link',{ name:'Statistik',exact:true }).click(); await expect(page.getByRole('heading',{ name:'Belum Ada Data' })).toBeVisible();
+  await page.getByRole('link',{ name:'Kampanye',exact:true }).click(); await page.getByRole('link',{ name:'Buat Kampanye' }).click();
   await page.setViewportSize({ width:390,height:844 }); await page.screenshot({ path:'test-results/campaign-form-mobile.png',fullPage:true });
   await page.getByLabel('Judul',{ exact:true }).fill('Kampanye uji lengkap'); await expect(page.getByLabel('Slug link')).toHaveValue('kampanye-uji-lengkap');
   await page.getByLabel('Caption',{ exact:true }).fill('Caption uji');
@@ -68,8 +69,15 @@ test('admin creates, previews, publishes, shares, edits, unpublishes and archive
   await page.getByRole('button',{ name:'Arsipkan' }).click(); await page.getByRole('dialog').getByRole('button',{ name:'Arsipkan' }).click(); await expect(page.getByRole('heading',{ name:'Status: Arsip' })).toBeVisible();
   await page.getByRole('button',{ name:'Kembalikan' }).click(); await page.getByRole('dialog').getByRole('button',{ name:'Kembalikan' }).click();
   await page.evaluate(() => { document.querySelector('.dashboard-shell').dataset.persist='yes'; });
-  await page.getByRole('link',{ name:'Statistik',exact:true }).click(); await expect(page.locator('.dashboard-shell')).toHaveAttribute('data-persist','yes'); await page.getByRole('combobox',{ name:'Rentang hari' }).selectOption('30');
-  await expect(page.getByRole('heading',{ name:'Aktivitas unduh per hari' })).toBeVisible();
+  await page.getByRole('link',{ name:'Statistik',exact:true }).click(); await expect(page.locator('.dashboard-shell')).toHaveAttribute('data-persist','yes');
+  await expect(page.getByRole('heading',{ name:'Aktivitas Download' })).toBeVisible();
+  await expect(page.getByRole('heading',{ name:'Kampanye Teratas' })).toBeVisible();
+  await expect(page.getByText('Kampanye Terbit')).toBeVisible();
+  await page.getByRole('button',{ name:'30 Hari' }).click(); await expect(page.getByRole('button',{ name:'30 Hari' })).toHaveAttribute('aria-pressed','true');
+  await expect(page.getByRole('heading',{ name:'Aktivitas Per Hari' })).toBeVisible();
+  await page.setViewportSize({ width:1280,height:900 }); await page.screenshot({ path:'test-results/statistics-desktop.png',fullPage:true });
+  await page.getByRole('button',{ name:'Gunakan Tema Gelap' }).click(); await page.screenshot({ path:'test-results/statistics-dark.png',fullPage:true });
+  await page.setViewportSize({ width:390,height:844 }); await page.screenshot({ path:'test-results/statistics-mobile.png',fullPage:true });
   await page.getByRole('link',{ name:'Pengaturan',exact:true }).click(); await expect(page.locator('.dashboard-shell')).toHaveAttribute('data-persist','yes'); await page.getByLabel('Nama pengelola').fill('Nama uji baru'); await page.getByRole('button',{ name:'Simpan',exact:true }).first().click(); await expect(page.getByText('Nama diperbarui.')).toBeVisible();
   await page.getByRole('button',{ name:'Buka Menu' }).click(); await page.getByRole('button',{ name:'Keluar' }).click(); await expect(page).toHaveURL(/\/login$/);
   expect(errors).toEqual([]);
@@ -83,6 +91,7 @@ test('superadmin approval, quotas and cleanup controls are functional',async ({ 
   await expect.poll(() => calls.some((c) => c.name==='moderate_account')).toBe(true);
   await page.getByRole('link',{ name:'Pengaturan',exact:true }).click(); await page.getByRole('button',{ name:'Simpan',exact:true }).nth(1).click(); await expect(page.getByText('Kuota diperbarui.',{ exact:false })).toBeVisible();
   await page.getByRole('button',{ name:'Bersihkan' }).click(); await expect(page.getByText('Aset lama dibersihkan.')).toBeVisible();
+  await page.getByRole('link',{ name:'Statistik',exact:true }).click(); await expect(page.getByRole('heading',{ name:'Statistik' })).toBeVisible(); await expect(page.getByRole('heading',{ name:'Belum Ada Data' })).toBeVisible();
   for (const theme of ['light','dark']) {
     const current=await page.locator('html').getAttribute('data-theme');
     if (current!==theme) await page.getByRole('button',{ name:theme==='dark'?'Gunakan Tema Gelap':'Gunakan Tema Terang' }).click();

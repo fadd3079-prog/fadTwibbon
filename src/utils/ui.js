@@ -41,7 +41,9 @@ export function errorText(error) {
     SERVICE_UNAVAILABLE: 'Layanan sedang bermasalah. Coba lagi beberapa saat lagi.',
     NOT_FOUND: 'Kampanye tidak tersedia.',
     'Invalid login credentials': 'Email atau kata sandi tidak cocok.',
-    'Email not confirmed': 'Cek email kamu untuk verifikasi akun.',
+    'Email not confirmed': 'Verifikasi email kamu terlebih dahulu.',
+    'Token has expired or is invalid': 'Kode salah atau sudah kedaluwarsa.',
+    otp_expired: 'Kode salah atau sudah kedaluwarsa.',
     over_email_send_rate_limit: 'Tunggu sebentar sebelum kirim ulang.',
     email_rate_limit_exceeded: 'Tunggu sebentar sebelum kirim ulang.',
   };

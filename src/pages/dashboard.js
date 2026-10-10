@@ -7,6 +7,7 @@ import { validateTemplate,loadTemplate,release } from '../editor/image-loader.js
 import { createEditor } from '../editor/editor.js';
 import { ArrowLeft,Archive,ArchiveRestore,Ban,ChartNoAxesCombined,Copy,ExternalLink,Images,LayoutDashboard,Pencil,Plus,RefreshCcw,Save,Send,Settings,Trash2,UserCheck,UserX,Users,Wrench } from 'lucide';
 import { icon } from '../components/icon.js';
+import { lineChart,barChart } from '../components/charts.js';
 
 const states = { draft:'Draft',published:'Terbit',disabled:'Dinonaktifkan',archived:'Arsip' };
 export function createDashboardLayout(viewer,navigate) {
@@ -37,7 +38,7 @@ export function createDashboardLayout(viewer,navigate) {
     const seq=++sequence;
     currentDestroy(); currentDestroy=() => {}; active(path);
     const loading=el('div',{ class:'section-loading',role:'status' },el('span',{ class:'spinner','aria-hidden':'true' }),el('span',{},'Memuat…'));
-    const accountNote=() => viewer.status==='pending' ? [el('p',{ class:'account-note' },'Akun menunggu persetujuan. Publikasi belum tersedia.')] : [];
+    const accountNote=() => viewer.status==='pending' ? [el('div',{ class:'account-note' },el('strong',{},'Akun Menunggu Persetujuan'),el('span',{},'Publikasi belum tersedia.'))] : [];
     workspace.replaceChildren(...accountNote(),loading);
     try {
       const content=await section(path);
@@ -163,21 +164,28 @@ async function campaignForm(id,viewer,base,navigate) {
 async function statistics(global) {
   const data=await rpc('dashboard_stats',{ p_global:global });
   if (!data || typeof data!=='object') throw Object.assign(new Error('Statistik gagal dimuat. Coba lagi.'),{ friendly:true });
-  const root=el('section',{ class:'dashboard-page statistics-page' },el('div',{ class:'page-heading' },el('div',{},el('p',{ class:'kicker' },global?'Seluruh Platform':'Kampanye Anda'),el('h1',{},'Statistik'))),el('p',{ class:'page-summary' },'Total Download mencatat tindakan yang diterima server, bukan pengguna unik. Tanggal memakai UTC.'));
+  const root=el('section',{ class:'dashboard-page statistics-page' },el('div',{ class:'page-heading' },el('div',{},el('p',{ class:'kicker' },global?'Seluruh Platform':'Kampanye Anda'),el('h1',{},'Statistik'))),el('p',{ class:'page-summary' },'Aktivitas download yang tercatat.'));
   const metrics=el('dl',{ class:'metrics' });
-  for (const [label,value] of [['Total Download',data.downloads],['7 Hari Terakhir',data.last7],['30 Hari Terakhir',data.last30]]) metrics.append(el('div',{},el('dt',{},label),el('dd',{},number(value))));
+  for (const [label,value] of [['Total Download',data.downloads],['7 Hari Terakhir',data.last7],['30 Hari Terakhir',data.last30],['Kampanye Terbit',data.published]]) metrics.append(el('div',{},el('dt',{},label),el('dd',{},number(value))));
   root.append(metrics);
-  if (!data.campaigns) { root.append(el('p',{ class:'empty-state' },'Belum ada kampanye. Buat kampanye terlebih dahulu untuk melihat aktivitasnya.')); return root; }
-  const ranking=el('section',{},el('h2',{},'Kampanye dengan aktivitas terbanyak'));
-  const rows=Array.isArray(data.ranking)?data.ranking:[];
-  const table=el('table',{ class:'data-table' },el('thead',{},el('tr',{},el('th',{ scope:'col' },'Kampanye'),el('th',{ scope:'col' },'Aktivitas unduh'))),el('tbody',{},rows.map((r) => el('tr',{},el('td',{},link(r.title,`${global?'/superadmin':'/admin'}/campaigns/${r.id}`)),el('td',{},number(r.downloads)))))); ranking.append(table);
-  const daily=el('section',{},el('h2',{},'Aktivitas unduh per hari'));
-  const range=el('select',{ 'aria-label':'Rentang hari' },el('option',{ value:'7' },'7 hari terakhir'),el('option',{ value:'30' },'30 hari terakhir'));
-  const dailyTable=el('table',{ class:'data-table' }),head=el('thead',{},el('tr',{},el('th',{ scope:'col' },'Tanggal (UTC)'),el('th',{ scope:'col' },'Aktivitas unduh'))),body=el('tbody',{});
-  const series=Array.isArray(data.series)?data.series:[];
-  function draw() { body.replaceChildren(...series.slice(-Number(range.value)).map((r) => el('tr',{},el('td',{},date(r.day)),el('td',{},number(r.downloads))))); }
-  range.addEventListener('change',draw); draw(); dailyTable.append(head,body); daily.append(range,dailyTable);
-  root.append(el('div',{ class:'stats-layout' },ranking,daily)); return root;
+  if (!data.campaigns) { root.append(el('div',{ class:'empty-state' },el('h2',{},'Belum Ada Data'),el('p',{},'Buat dan terbitkan kampanye untuk mulai melihat statistik.'))); return root; }
+  const rows=Array.isArray(data.ranking)?data.ranking:[],series=Array.isArray(data.series)?data.series:[];
+  const range=el('div',{ class:'range-switch','aria-label':'Pilih rentang waktu' },button('7 Hari',() => selectRange(7)),button('30 Hari',() => selectRange(30)));
+  const lineBody=el('div',{ class:'chart-body' });
+  const activity=el('section',{ class:'chart-panel activity-chart' },el('div',{ class:'chart-heading' },el('div',{},el('p',{ class:'section-label' },'Per Hari'),el('h2',{},'Aktivitas Download')),range),lineBody);
+  const campaignBody=el('div',{ class:'chart-body' },rows.length?barChart(rows):el('p',{ class:'chart-empty' },'Belum ada data download.'));
+  const campaignsChart=el('section',{ class:'chart-panel campaigns-chart' },el('div',{ class:'chart-heading' },el('div',{},el('p',{ class:'section-label' },'Total'),el('h2',{},'Kampanye Teratas'))),campaignBody);
+  const dailyBody=el('tbody',{});
+  const dailyTable=el('table',{ class:'data-table' },el('thead',{},el('tr',{},el('th',{ scope:'col' },'Tanggal'),el('th',{ scope:'col' },'Download'))),dailyBody);
+  const detail=el('section',{ class:'stats-table-panel' },el('div',{ class:'chart-heading' },el('div',{},el('p',{ class:'section-label' },'Detail'),el('h2',{},'Aktivitas Per Hari'))),el('div',{ class:'stats-table-scroll' },dailyTable));
+  function selectRange(days) {
+    for (const control of range.children) { const active=control.textContent.startsWith(String(days)); control.classList.toggle('active',active); control.setAttribute('aria-pressed',String(active)); }
+    const visible=series.slice(-days);
+    lineBody.replaceChildren(visible.some((row) => Number(row.downloads)>0)?lineChart(visible):el('p',{ class:'chart-empty' },'Belum ada download pada rentang ini.'));
+    dailyBody.replaceChildren(...visible.slice().reverse().map((row) => el('tr',{},el('td',{},date(row.day)),el('td',{},number(row.downloads)))));
+  }
+  selectRange(7);
+  root.append(el('div',{ class:'stats-charts' },activity,campaignsChart),detail); return root;
 }
 
 async function users() {

@@ -1,7 +1,7 @@
-import { el, link, button, field, status, busy, message } from '../utils/ui.js';
+import { el, link, button, field, status, busy, message, errorText } from '../utils/ui.js';
 import { supabase } from '../services/supabase.js';
-import { establishSession,refreshAuth,callbackUrl } from '../services/auth.js';
-import { Eye,EyeOff,Mail } from 'lucide';
+import { establishSession,refreshAuth } from '../services/auth.js';
+import { Eye,EyeOff } from 'lucide';
 import { icon } from '../components/icon.js';
 
 const destination = (viewer) => viewer?.role==='super_admin'?'/superadmin':'/admin';
@@ -27,18 +27,43 @@ export async function authPage(mode, navigate) {
 
   function verification(email) {
     const note=status();
-    const resend=button('Kirim Ulang',() => void busy(resend,note,async () => {
-      const { error }=await (await supabase()).auth.resend({ type:'signup',email,options:{ emailRedirectTo:callbackUrl() } });
-      if (error) throw error;
-    },'Link baru sudah dikirim.'));
-    root.replaceChildren(el('div',{ class:'auth-confirmation' },icon(Mail,24),el('p',{ class:'kicker' },'Verifikasi Email'),el('h1',{},'Cek Email Kamu'),el('p',{},'Link verifikasi dikirim ke:'),el('strong',{},email),el('p',{ class:'hint' },'Klik link di email untuk lanjut ke Dashboard.'),resend,note,link('Kembali ke Masuk','/login','auth-back')));
+    const otp=el('input',{ id:'email-otp',name:'email-otp',type:'text',required:true,inputmode:'numeric',autocomplete:'one-time-code',pattern:'[0-9]{6}',minlength:'6','aria-describedby':'otp-help' });
+    const verify=el('button',{ type:'submit',class:'primary' },'Verifikasi');
+    const otpForm=el('form',{ class:'auth-form otp-form' },el('div',{ class:'field' },el('label',{ for:'email-otp' },'Kode Verifikasi'),otp,el('small',{ id:'otp-help' },`Kode dikirim ke ${email}`)),verify);
+    let remaining=60,timer;
+    const resend=button('Kirim Ulang Kode',async () => {
+      resend.disabled=true; message(note,'Memproses…');
+      try {
+        const { error }=await (await supabase()).auth.resend({ type:'signup',email });
+        if (error) throw error;
+        message(note,'Kode baru sudah dikirim.'); startCooldown();
+      } catch (error) { message(note,errorText(error),true); startCooldown(); }
+    });
+    function startCooldown() {
+      clearInterval(timer); remaining=60; resend.disabled=true; resend.querySelector('span').textContent=`Kirim Ulang Kode (${remaining})`;
+      timer=setInterval(() => { remaining--; resend.querySelector('span').textContent=remaining?`Kirim Ulang Kode (${remaining})`:'Kirim Ulang Kode'; if (!remaining) { clearInterval(timer); resend.disabled=false; } },1000);
+    }
+    otp.addEventListener('input',() => { otp.value=otp.value.replace(/\D/g,'').slice(0,6); });
+    otpForm.addEventListener('submit',(event) => {
+      event.preventDefault();
+      void busy(verify,note,async () => {
+        const db=await supabase();
+        const { data,error }=await db.auth.verifyOtp({ email,token:otp.value,type:'signup' });
+        if (error) throw error;
+        const viewer=await establishSession(data.session);
+        clearInterval(timer); navigate(destination(viewer),true);
+      });
+    });
+    startCooldown();
+    root.replaceChildren(el('div',{ class:'auth-confirmation' },el('p',{ class:'kicker' },'Verifikasi Email'),el('h1',{},'Verifikasi Email'),el('p',{},'Masukkan 6 digit kode yang dikirim ke email kamu.'),otpForm,resend,note,link('Kembali ke Masuk','/login','auth-back')));
+    otp.focus();
   }
 
   form.addEventListener('submit',(event) => {
     event.preventDefault();
     void busy(submit,feedback,async () => {
       const db = await supabase(); let result;
-      if (mode==='register') result=await db.auth.signUp({ email:inputs.email.value.trim(),password:inputs.password.value,options:{ emailRedirectTo:callbackUrl(),data:{ display_name:inputs.display_name.value.trim() } } });
+      if (mode==='register') result=await db.auth.signUp({ email:inputs.email.value.trim(),password:inputs.password.value,options:{ data:{ display_name:inputs.display_name.value.trim() } } });
       if (mode==='login') result=await db.auth.signInWithPassword({ email:inputs.email.value.trim(),password:inputs.password.value });
       if (mode==='forgot') result=await db.auth.resetPasswordForEmail(inputs.email.value.trim(),{ redirectTo:`${location.origin}/reset-password` });
       if (mode==='reset') result=await db.auth.updateUser({ password:inputs.password.value });

@@ -82,8 +82,6 @@ export async function signOut() {
   publish({ status:'anonymous',viewer:null,error:null });
 }
 
-export const callbackUrl = () => `${location.origin}/auth/callback`;
-
 export function destroyAuth() {
   subscription?.unsubscribe();
   subscription = null;

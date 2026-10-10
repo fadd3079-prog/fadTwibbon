@@ -492,6 +492,16 @@ input[type="range"] {
   color: var(--ink);
 }
 
+.account-note strong,
+.account-note span {
+  display: block;
+}
+
+.account-note span {
+  margin-top: .2rem;
+  color: var(--muted);
+}
+
 .actions {
   display: flex;
   align-items: center;
@@ -640,6 +650,18 @@ input[type="range"] {
 
 .auth-confirmation button {
   margin-top: .5rem;
+}
+
+.auth-confirmation .otp-form {
+  width: 100%;
+  margin-top: .5rem;
+}
+
+.otp-form input {
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .35em;
+  text-align: center;
 }
 
 .auth-confirmation .notice {
