@@ -11,7 +11,7 @@ export function createEditor(template, { slug = 'preview', caption = '', onDownl
   const feedback = status();
   const input = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', hidden: true, id: 'photo-file', tabindex: '-1' });
   const select = button('Pilih Foto', () => input.click(), 'choose primary',Upload);
-  const download = button('Unduh Twibbon', async () => {
+  const download = button('Download Twibbon', async () => {
     download.disabled = true; message(feedback, 'Membuat PNG…');
     try {
       const blob = await exportPng(frame, template, photo, state);
@@ -40,8 +40,10 @@ export function createEditor(template, { slug = 'preview', caption = '', onDownl
   controls.append(el('label', { class: 'zoom-label' }, 'Zoom', slider));
   const help = el('p', { id: 'editor-help', class: 'editor-help' }, 'Geser atau cubit foto.');
   const tools=el('div',{ class:'editor-tools' },input,select,controls,help);
-  const root = el('section', { class: preview ? 'editor editor-preview' : 'editor', 'aria-label': preview ? 'Pratinjau template' : 'Buat Twibbon' }, el('div', { class: 'canvas-wrap' }, canvas), tools);
-  if (!preview) tools.append(el('div',{ class:'editor-actions' },download,save,button('Salin Caption', () => copy(caption, feedback), 'caption-button',Copy)));
+  const canvasWrap=el('div',{ class:'canvas-wrap' },canvas);
+  canvasWrap.style.aspectRatio=`${frame.width} / ${frame.height}`;
+  const root = el('section', { class: preview ? 'editor editor-preview' : 'editor', 'aria-label': preview ? 'Preview template' : 'Buat Twibbon' },canvasWrap,tools);
+  if (!preview) tools.append(el('div',{ class:'editor-actions' },download,save,button('Copy Caption', () => copy(caption, feedback), 'caption-button',Copy)));
   tools.append(feedback, el('p', { class: 'privacy-note' }, 'Foto tetap di perangkat Anda.'));
 
   function requestRender() {

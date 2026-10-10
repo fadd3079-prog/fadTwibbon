@@ -14,7 +14,7 @@ test('local photo, transform, fixed template, original-resolution export and pri
   const errors=[],uploads=[]; page.on('pageerror',(e) => errors.push(e.message));
   page.on('request',(r) => { if (r.method()!=='GET') uploads.push({ url:r.url(),body:r.postData() }); });
   await campaign(page,503);
-  await expect(page.getByRole('button',{ name:'Unduh Twibbon' })).toBeDisabled();
+  await expect(page.getByRole('button',{ name:'Download Twibbon' })).toBeDisabled();
   await page.locator('#photo-file').setInputFiles({ name:'photo.png',mimeType:'image/png',buffer:png(900,1200) });
   await expect(page.getByRole('button',{ name:'Ganti Foto' })).toBeVisible();
   await page.setViewportSize({ width:390,height:844 }); await page.screenshot({ path:'test-results/editor-photo-mobile.png',fullPage:true });
@@ -22,7 +22,7 @@ test('local photo, transform, fixed template, original-resolution export and pri
   await page.getByRole('button',{ name:'Putar Kanan' }).click();
   await page.locator('canvas').focus(); await page.keyboard.press('ArrowLeft'); await page.keyboard.press('+');
   const box=await page.locator('canvas').boundingBox(); await page.mouse.move(box.x+box.width/2,box.y+box.height/2); await page.mouse.down(); await page.mouse.move(box.x+box.width/2+50,box.y+box.height/2+30); await page.mouse.up();
-  const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{ name:'Unduh Twibbon' }).click()]);
+  const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{ name:'Download Twibbon' }).click()]);
   const data=await readFile(await download.path()); expect(data.readUInt32BE(16)).toBe(1080); expect(data.readUInt32BE(20)).toBe(720);
   expect(download.suggestedFilename()).toBe('fadTwibbon-uji-editor.png');
   const pixels=await page.evaluate(async () => { const image=new Image(); image.src=document.querySelector('.save-result').href; await image.decode(); const canvas=document.createElement('canvas'); canvas.width=image.width; canvas.height=image.height; const ctx=canvas.getContext('2d'); ctx.drawImage(image,0,0); const border=[...ctx.getImageData(0,0,1,1).data],center=[...ctx.getImageData(540,360,1,1).data]; image.src=''; return { border,center }; });
@@ -38,11 +38,11 @@ test('unsupported photos preserve controls and show an actionable error',async (
   await campaign(page);
   await page.locator('#photo-file').setInputFiles({ name:'photo.heic',mimeType:'image/heic',buffer:Buffer.from('not an image') });
   await expect(page.getByText('Format tidak didukung.',{ exact:false })).toBeVisible();
-  await expect(page.getByRole('button',{ name:'Unduh Twibbon' })).toBeDisabled();
+  await expect(page.getByRole('button',{ name:'Download Twibbon' })).toBeDisabled();
 });
 test('caption clipboard fallback remains selectable',async ({ page }) => {
   await page.addInitScript(() => { Object.defineProperty(navigator,'clipboard',{ value:{ writeText:() => Promise.reject(new Error('denied')) } }); });
-  await campaign(page); await page.getByRole('button',{ name:'Salin Caption' }).click();
+  await campaign(page); await page.getByRole('button',{ name:'Copy Caption' }).click();
   await expect(page.getByRole('textbox',{ name:'Teks untuk disalin' })).toHaveValue('Caption uji\nBaris kedua');
 });
 test('pinch changes only the photo and keyboard controls remain reachable',async ({ page }) => {
@@ -86,10 +86,10 @@ test('home, login, registration, recovery, legal pages, unknown campaign and pro
   await page.setViewportSize({ width:390,height:844 }); await page.screenshot({ path:'test-results/register-mobile.png',fullPage:true });
   await page.getByRole('link',{ name:'Ketentuan',exact:true }).first().click(); await expect(page.getByRole('heading',{ name:'Ketentuan penggunaan' })).toBeVisible();
   await page.getByRole('link',{ name:'Privasi',exact:true }).click(); await expect(page.getByRole('heading',{ name:'Privasi',exact:true })).toBeVisible();
-  await page.goto('/forgot-password'); await expect(page.getByRole('button',{ name:'Kirim tautan',exact:true })).toBeVisible();
+  await page.goto('/forgot-password'); await expect(page.getByRole('button',{ name:'Kirim Link',exact:true })).toBeVisible();
   await page.route('**/auth/v1/user',(route) => route.fulfill({ status:401,json:{ message:'no session' } }));
   await page.goto('/admin'); await expect(page).toHaveURL(/\/login$/);
-  await page.goto('/c/not-found'); await expect(page.getByRole('heading',{ name:'Kampanye tidak ditemukan.' })).toBeVisible();
-  await page.goto('/unknown'); await expect(page.getByRole('heading',{ name:'Halaman tidak ditemukan' })).toBeVisible();
+  await page.goto('/c/not-found'); await expect(page.getByRole('heading',{ name:'Kampanye Tidak Ditemukan' })).toBeVisible();
+  await page.goto('/unknown'); await expect(page.getByRole('heading',{ name:'Halaman Tidak Ditemukan' })).toBeVisible();
   await page.screenshot({ path:'test-results/not-found-mobile.png',fullPage:true });
 });

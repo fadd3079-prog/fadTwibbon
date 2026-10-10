@@ -12,7 +12,7 @@ const controls=new Set();
 function apply() {
   const theme=current();
   document.documentElement.dataset.theme=theme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='dark'?'#0a0a0a':'#ffffff');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',theme==='dark'?'#383838':'#eeeeee');
   for (const control of controls) {
     const dark=theme==='dark';
     control.replaceChildren(icon(dark?Sun:Moon));

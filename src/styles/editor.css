@@ -3,8 +3,8 @@
 .campaign-heading h1 { font-size: clamp(1.55rem, 3vw, 1.9rem); }
 .editor { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; min-width: 0; }
 .editor p { margin: 0; }
-.canvas-wrap { position: relative; min-width: 0; padding: clamp(.3rem, 1vw, .5rem); border: 1px solid var(--line); border-radius: var(--radius-md); background-color: #fff; background-image: conic-gradient(#e3e5e2 25%, transparent 0 50%, #e3e5e2 0 75%, transparent 0); background-size: 20px 20px; }
-.editor canvas { display: block; width: 100%; height: auto; border-radius: calc(var(--radius-md) - 4px); touch-action: none; cursor: grab; }
+.canvas-wrap { position: relative; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-inset); }
+.editor canvas { display: block; width: 100%; height: auto; border-radius: inherit; touch-action: none; cursor: grab; }
 .editor canvas:active { cursor: grabbing; }
 .editor-tools { display: grid; gap: .85rem; min-width: 0; align-content: start; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); }
 .editor .choose { width: 100%; min-height: 46px; }
@@ -36,6 +36,7 @@
   .campaign-page { max-width: 1460px; }
   .campaign-heading { max-width: calc(100% - 330px); }
   .editor:not(.editor-preview) { grid-template-columns: minmax(0, 1fr) 320px; gap: clamp(1.25rem,2.5vw,2.5rem); align-items: start; }
-  .editor:not(.editor-preview) .canvas-wrap { width: 100%; max-width: 1080px; justify-self: end; }
+  .editor:not(.editor-preview) .canvas-wrap { width: auto; max-width: 100%; height: min(600px,calc(100vh - 230px)); min-height: 360px; justify-self: center; }
+  .editor:not(.editor-preview) canvas { width: 100%; height: 100%; }
   .editor:not(.editor-preview) .editor-tools { position: sticky; top: 1.5rem; }
 }

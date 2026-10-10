@@ -3,7 +3,7 @@ import { LogIn,Search,UserPlus } from 'lucide';
 import { icon } from '../components/icon.js';
 
 export function homePage(navigate) {
-  const slug = field('Slug kampanye','campaign-slug',{ required:true,pattern:'[a-z0-9]+(-[a-z0-9]+)*',minlength:3,maxlength:64,placeholder:'contoh-kampanye',help:'Slug adalah bagian terakhir dari tautan kampanye.' });
+  const slug = field('Slug kampanye','campaign-slug',{ required:true,pattern:'[a-z0-9]+(-[a-z0-9]+)*',minlength:3,maxlength:64,placeholder:'contoh-kampanye',help:'Slug adalah bagian terakhir dari link kampanye.' });
   const form = el('form',{ class:'open-campaign' },slug.wrap,el('button',{ type:'submit',class:'primary' },icon(Search),el('span',{},'Buka Kampanye')));
   form.addEventListener('submit',(event) => { event.preventDefault(); navigate(`/c/${slug.input.value}`); });
   return el('div',{ class:'home-page' },

@@ -90,9 +90,9 @@ async function campaigns(global,base) {
 async function campaignForm(id,viewer,base,navigate) {
   let current=id?await getCampaign(id):null, selectedFile=null, editor=null, disposed=false, previewSequence=0, submitting=false;
   const root=el('section',{ class:'dashboard-page campaign-editor-page' },el('div',{ class:'page-heading' },el('div',{},el('h1',{},id?'Edit Kampanye':'Buat Kampanye')),link('Kembali',base,'button',ArrowLeft)));
-  const form=el('form',{ class:'campaign-form' }),fields=el('div',{ class:'form-surface' },el('h2',{},'Informasi kampanye')),preview=el('aside',{ class:'form-preview','aria-label':'Pratinjau' },el('div',{ class:'preview-heading' },el('p',{ class:'section-label' },'Template'),el('h2',{},'Pratinjau')));
+  const form=el('form',{ class:'campaign-form' }),fields=el('div',{ class:'form-surface' },el('h2',{},'Detail Kampanye')),preview=el('aside',{ class:'form-preview','aria-label':'Preview' },el('div',{ class:'preview-heading' },el('p',{ class:'section-label' },'Template'),el('h2',{},'Preview')));
   const inputs={};
-  for (const [label,name,options] of [['Judul','title',{ required:true,maxlength:120 }],['Slug tautan','slug',{ required:true,minlength:3,maxlength:64,pattern:'[a-z0-9]+(-[a-z0-9]+)*',help:'Slug dikunci setelah publikasi pertama.' }],['Deskripsi','description',{ multiline:true,maxlength:2000 }],['Caption','caption',{ multiline:true,maxlength:5000 }]]) {
+  for (const [label,name,options] of [['Judul','title',{ required:true,maxlength:120 }],['Slug link','slug',{ required:true,minlength:3,maxlength:64,pattern:'[a-z0-9]+(-[a-z0-9]+)*',help:'Slug dikunci setelah publikasi pertama.' }],['Deskripsi','description',{ multiline:true,maxlength:2000 }],['Caption','caption',{ multiline:true,maxlength:5000 }]]) {
     const f=field(label,name,options); if (current) f.input.value=current[name]; inputs[name]=f.input; fields.append(f.wrap);
   }
   if (current?.published_at) inputs.slug.readOnly=true;
@@ -100,7 +100,7 @@ async function campaignForm(id,viewer,base,navigate) {
   inputs.slug.addEventListener('input',() => { manualSlug=true; });
   inputs.title.addEventListener('input',() => { if (!manualSlug) inputs.slug.value=slugify(inputs.title.value); });
   const feedback=status();
-  const template=field(current?.template_id?'Ganti template PNG':'Template PNG','template-file',{ type:'file',accept:'image/png',help:'PNG transparan, maksimal 3 MB, 4.096 piksel per sisi dan 16 megapiksel. Minimal 1% area transparan. Berkas 8-bit, non-interlaced, tanpa animasi.' });
+  const template=field(current?.template_id?'Ganti template PNG':'Template PNG','template-file',{ type:'file',accept:'image/png',help:'PNG transparan, maksimal 3 MB.' });
   template.input.disabled=current?.status==='published' || current?.status==='disabled'; fields.append(template.wrap);
   if (current?.status==='published') fields.append(el('p',{ class:'hint' },'Tarik publikasi terlebih dahulu untuk mengganti template. Teks dapat diperbarui tanpa mengganti aset.'));
   if (current?.disabled_reason) fields.append(el('p',{ class:'account-note' },`Alasan moderasi: ${current.disabled_reason}`));
@@ -112,7 +112,7 @@ async function campaignForm(id,viewer,base,navigate) {
   template.input.addEventListener('change',async () => {
     const file=template.input.files[0]; if (!file) return;
     const seq=++previewSequence; message(feedback,'Memeriksa template…');
-    try { const image=await validateTemplate(file); if (seq===previewSequence && !disposed) selectedFile=file; await setPreview(image,seq); publishButton.disabled=viewer.status!=='active'; message(feedback,'Template siap. Simpan untuk mengunggah.'); }
+    try { const image=await validateTemplate(file); if (seq===previewSequence && !disposed) selectedFile=file; await setPreview(image,seq); publishButton.disabled=viewer.status!=='active'; message(feedback,'Template siap. Klik Simpan untuk upload.'); }
     catch (error) { template.input.value=''; selectedFile=null; publishButton.disabled=viewer.status!=='active' || !current?.template_id; message(feedback,error.message,true); }
   });
   const save=el('button',{ type:'submit',class:'primary' },icon(Save),el('span',{},current?.status==='published'?'Simpan Perubahan':'Simpan')), publishButton=button(current?.status==='published'?'Perbarui':'Terbitkan',() => void perform(publishButton,true),'',Send);
@@ -155,7 +155,7 @@ async function campaignForm(id,viewer,base,navigate) {
   if (current?.templateUrl) {
     const seq=++previewSequence;
     try { await setPreview(await loadTemplate(current.templateUrl),seq); }
-    catch { message(feedback,'Pratinjau gagal dimuat. Muat ulang untuk mencoba lagi.',true); }
+    catch { message(feedback,'Preview gagal dimuat. Coba muat ulang.',true); }
   }
   return { root,destroy() { disposed=true; previewSequence++; editor?.destroy(); } };
 }
@@ -163,9 +163,9 @@ async function campaignForm(id,viewer,base,navigate) {
 async function statistics(global) {
   const data=await rpc('dashboard_stats',{ p_global:global });
   if (!data || typeof data!=='object') throw Object.assign(new Error('Statistik gagal dimuat. Coba lagi.'),{ friendly:true });
-  const root=el('section',{ class:'dashboard-page statistics-page' },el('div',{ class:'page-heading' },el('div',{},el('p',{ class:'kicker' },global?'Seluruh platform':'Kampanye Anda'),el('h1',{},'Statistik'))),el('p',{ class:'page-summary' },'Aktivitas unduh yang diterima server. Angka ini bukan jumlah orang unik atau jaminan berkas tersimpan. Tanggal menggunakan UTC.'));
+  const root=el('section',{ class:'dashboard-page statistics-page' },el('div',{ class:'page-heading' },el('div',{},el('p',{ class:'kicker' },global?'Seluruh Platform':'Kampanye Anda'),el('h1',{},'Statistik'))),el('p',{ class:'page-summary' },'Total Download mencatat tindakan yang diterima server, bukan pengguna unik. Tanggal memakai UTC.'));
   const metrics=el('dl',{ class:'metrics' });
-  for (const [label,value] of [['Total tercatat',data.downloads],['7 hari terakhir',data.last7],['30 hari terakhir',data.last30]]) metrics.append(el('div',{},el('dt',{},label),el('dd',{},number(value))));
+  for (const [label,value] of [['Total Download',data.downloads],['7 Hari Terakhir',data.last7],['30 Hari Terakhir',data.last30]]) metrics.append(el('div',{},el('dt',{},label),el('dd',{},number(value))));
   root.append(metrics);
   if (!data.campaigns) { root.append(el('p',{ class:'empty-state' },'Belum ada kampanye. Buat kampanye terlebih dahulu untuk melihat aktivitasnya.')); return root; }
   const ranking=el('section',{},el('h2',{},'Kampanye dengan aktivitas terbanyak'));

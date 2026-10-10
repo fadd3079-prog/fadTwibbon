@@ -46,7 +46,7 @@ test('admin creates, previews, publishes, shares, edits, unpublishes and archive
   await page.setViewportSize({ width:1280,height:900 }); await page.screenshot({ path:'test-results/admin-empty-desktop.png',fullPage:true });
   await page.getByRole('link',{ name:'Buat Kampanye' }).click();
   await page.setViewportSize({ width:390,height:844 }); await page.screenshot({ path:'test-results/campaign-form-mobile.png',fullPage:true });
-  await page.getByLabel('Judul',{ exact:true }).fill('Kampanye uji lengkap'); await expect(page.getByLabel('Slug tautan')).toHaveValue('kampanye-uji-lengkap');
+  await page.getByLabel('Judul',{ exact:true }).fill('Kampanye uji lengkap'); await expect(page.getByLabel('Slug link')).toHaveValue('kampanye-uji-lengkap');
   await page.getByLabel('Caption',{ exact:true }).fill('Caption uji');
   await expect(page.getByRole('button',{ name:'Terbitkan',exact:true })).toBeDisabled();
   await page.getByLabel('Template PNG',{ exact:true }).setInputFiles({ name:'opaque.png',mimeType:'image/png',buffer:png(80,80,false) });
@@ -58,7 +58,7 @@ test('admin creates, previews, publishes, shares, edits, unpublishes and archive
   await page.getByRole('button',{ name:'Simpan',exact:true }).evaluate((control) => { control.click(); control.click(); }); await expect(page).toHaveURL(new RegExp(campaignId));
   expect(calls.filter((call) => call.name==='campaign-assets')).toHaveLength(1);
   await page.getByRole('button',{ name:'Terbitkan',exact:true }).click(); await expect(page.getByRole('heading',{ name:'Status: Terbit' })).toBeVisible();
-  await expect(page.getByLabel('Slug tautan')).toHaveAttribute('readonly','');
+  await expect(page.getByLabel('Slug link')).toHaveAttribute('readonly','');
   await page.addInitScript(() => Object.defineProperty(navigator,'clipboard',{ value:{ writeText:() => Promise.reject(new Error('denied')) } }));
   await page.getByRole('button',{ name:'Salin Link' }).click();
   await page.getByLabel('Judul',{ exact:true }).fill('Kampanye diperbarui'); await page.getByRole('button',{ name:'Simpan perubahan' }).click();
@@ -71,7 +71,7 @@ test('admin creates, previews, publishes, shares, edits, unpublishes and archive
   await page.getByRole('link',{ name:'Statistik',exact:true }).click(); await expect(page.locator('.dashboard-shell')).toHaveAttribute('data-persist','yes'); await page.getByRole('combobox',{ name:'Rentang hari' }).selectOption('30');
   await expect(page.getByRole('heading',{ name:'Aktivitas unduh per hari' })).toBeVisible();
   await page.getByRole('link',{ name:'Pengaturan',exact:true }).click(); await expect(page.locator('.dashboard-shell')).toHaveAttribute('data-persist','yes'); await page.getByLabel('Nama pengelola').fill('Nama uji baru'); await page.getByRole('button',{ name:'Simpan',exact:true }).first().click(); await expect(page.getByText('Nama diperbarui.')).toBeVisible();
-  await page.getByRole('button',{ name:'Keluar' }).click(); await expect(page).toHaveURL(/\/login$/);
+  await page.getByRole('button',{ name:'Buka Menu' }).click(); await page.getByRole('button',{ name:'Keluar' }).click(); await expect(page).toHaveURL(/\/login$/);
   expect(errors).toEqual([]);
 });
 

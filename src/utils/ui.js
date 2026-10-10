@@ -41,7 +41,9 @@ export function errorText(error) {
     SERVICE_UNAVAILABLE: 'Layanan sedang bermasalah. Coba lagi beberapa saat lagi.',
     NOT_FOUND: 'Kampanye tidak tersedia.',
     'Invalid login credentials': 'Email atau kata sandi tidak cocok.',
-    'Email not confirmed': 'Verifikasi email Anda sebelum masuk.',
+    'Email not confirmed': 'Cek email kamu untuk verifikasi akun.',
+    over_email_send_rate_limit: 'Tunggu sebentar sebelum kirim ulang.',
+    email_rate_limit_exceeded: 'Tunggu sebentar sebelum kirim ulang.',
   };
   for (const [key, value] of Object.entries(known)) if (raw.includes(key)) return value;
   if (error?.code === '23505' || raw.includes('duplicate key')) return 'Slug sudah digunakan. Pilih slug lain.';

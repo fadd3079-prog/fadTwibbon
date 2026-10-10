@@ -1,3 +1,11 @@
 User-agent: *
+Allow: /
 Disallow: /admin
 Disallow: /superadmin
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /auth
+
+Sitemap: https://fadtwibbon.vercel.app/sitemap.xml

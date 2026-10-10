@@ -9,5 +9,5 @@ export async function campaignPage(slug, signal) {
   const template = await loadTemplate(campaign.templateUrl,signal);
   const editor = createEditor(template,{ slug:campaign.slug,caption:campaign.caption,onDownload:() => recordDownload(campaign.id) });
   const root = el('div',{ class:'campaign-page' },el('header',{ class:'campaign-heading' },el('p',{ class:'kicker' },'Kampanye'),el('h1',{},campaign.title)),editor.root);
-  return { root,destroy:editor.destroy };
+  return { root,campaign,destroy:editor.destroy };
 }
